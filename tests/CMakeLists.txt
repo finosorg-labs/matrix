@@ -20,7 +20,8 @@ add_executable(matrix_tests
 # Link with matrix library
 target_link_libraries(matrix_tests
     PRIVATE
-        finkit_matrix_static
+        finkit_matrix_static_base
+        finkit::platform
         m
 )
 

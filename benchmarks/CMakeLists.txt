@@ -15,8 +15,9 @@ target_include_directories(bench_framework
 )
 
 target_link_libraries(bench_framework
-    PUBLIC
-        finkit_matrix_static
+  PUBLIC
+        finkit_matrix_static_base
+        finkit::platform
 )
 
 # Benchmark executable
@@ -37,7 +38,8 @@ add_executable(matrix_benchmarks
 target_link_libraries(matrix_benchmarks
     PRIVATE
         bench_framework
-        finkit_matrix_static
+        finkit_matrix_static_base
+        finkit::platform
         m
 )
 

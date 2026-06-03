@@ -75,8 +75,12 @@ qa-sanitizers: sanitizer-asan sanitizer-usan sanitizer-tsan sanitizer-msan
 
 linux:
 	@echo "==> Building Linux (native, $(BUILD_TYPE))"
-	@$(CMAKE) $(LINUX_CONFIG)
+	@$(CMAKE) -B $(LINUX_BUILD_DIR) \
+		-G Ninja \
+		-DCMAKE_BUILD_TYPE=$(BUILD_TYPE)
 	@$(CMAKE) --build $(LINUX_BUILD_DIR) --parallel
+	@echo "==> Cleaning intermediate build artifacts"
+	@rm -f $(LINUX_BUILD_DIR)/libfinkit_matrix_static_base.a
 
 windows:
 	@echo "==> Building Windows amd64 (cross-compile, $(BUILD_TYPE))"
@@ -100,7 +104,7 @@ test: linux
 	@bash scripts/test_coverage.sh $(LINUX_BUILD_DIR)
 	@echo ""
 	@echo "==> Running Go tests"
-	@FC_BUILD_MODE=source CGO_CFLAGS_ALLOW="-m(avx2|avx512f|avx512dq|fma|sse4\.2)" go test ./... -v
+	@FC_BUILD_MODE=source CGO_CFLAGS_ALLOW="-m(avx2|avx512f|avx512dq|fma|sse4\.2)" go test -vet=all -race -parallel=4 -v ./...
 
 bench:
 	@echo "==> Building benchmarks (Release mode)"
