@@ -9,46 +9,25 @@ package matrix
 /*
 #cgo CFLAGS: -I${SRCDIR}/include
 #cgo CFLAGS: -I${SRCDIR}/modules/platform/include
-#cgo CFLAGS: -I${SRCDIR}/modules/platform/src -O2 -Wall -std=c11 -D_POSIX_C_SOURCE=200112L -mavx2 -mfma
-#cgo LDFLAGS: ${SRCDIR}/modules/platform/build/linux_amd64/libfinkit_platform_static.a -lm -lgcov
+#cgo linux,amd64   LDFLAGS: -L${SRCDIR}/modules/platform/build/linux_amd64 -lfinkit_platform_static -lm
+#cgo linux,arm64   LDFLAGS: -L${SRCDIR}/modules/platform/build/linux_arm64 -lfinkit_platform_static -lm
+#cgo darwin,amd64  LDFLAGS: -L${SRCDIR}/modules/platform/build/darwin_amd64 -lfinkit_platform_static -lm
+#cgo darwin,arm64  LDFLAGS: -L${SRCDIR}/modules/platform/build/darwin_arm64 -lfinkit_platform_static -lm
+#cgo windows,amd64 LDFLAGS: -L${SRCDIR}/modules/platform/build/windows_amd64 -lfinkit_platform_static -lm
 
 
-#include <matrix.h>
-#include <gemm.h>
-#include <gemv.h>
-#include <decompose.h>
-#include <solve.h>
-#include <transpose.h>
-#include <tridiag.h>
-#include <vector_ops.h>
-#include <simd_detect.h>
-#include "fc_bignum_init.c"
-#include "fc_bigint.c"
-#include "fc_bigfloat.c"
-#include "fc_precision.c"
-
-// Platform sources (dependency)
-#include "modules/platform/src/simd_detect.c"
-#include "modules/platform/src/mem_aligned.c"
-#include "modules/platform/src/error.c"
-#include "modules/platform/src/fc_init.c"
-
-// Platform-specific sources
-#if defined(__linux__)
-  #include "modules/platform/src/platform_linux.c"
-#elif defined(__APPLE__)
-  #include "modules/platform/src/platform_macos.c"
-#elif defined(_WIN32)
-  #include "modules/platform/src/platform_win.c"
-#endif
+#include "matrix.h"
+#include "gemm.h"
+#include "gemv.h"
+#include "decompose.h"
+#include "solve.h"
+#include "transpose.h"
+#include "tridiag.h"
+#include "vector_ops.h"
 
 // Matrix sources
 #include "matrix-c/decompose.c"
-#include "matrix-c/gemm_scalar.c"
-#include "matrix-c/gemm_sse42.c"
-#include "matrix-c/gemm_avx2.c"
-#include "matrix-c/gemm_avx512.c"
-#include "matrix-c/gemm_dispatch.c"
+#include "matrix-c/gemm.c"
 #include "matrix-c/gemv.c"
 #include "matrix-c/solve.c"
 #include "matrix-c/transpose.c"

@@ -18,7 +18,13 @@ extern "C" {
 
 #ifdef FC_ENABLE_INTERNAL_TESTS
 
-/* GEMM internal implementations */
+/**
+ * @brief Internal GEMM implementations (for testing)
+ *
+ * These functions are exposed for unit testing individual SIMD variants.
+ * Production code should use fc_mat_gemm_f64() which automatically dispatches.
+ */
+
 int fc_mat_gemm_f64_scalar(
     int m,
     int n,

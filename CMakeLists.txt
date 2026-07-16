@@ -63,11 +63,7 @@ endif()
 # Matrix module sources
 set(MATRIX_SOURCES
     matrix-c/decompose.c
-    matrix-c/gemm_avx2.c
-    matrix-c/gemm_avx512.c
-    matrix-c/gemm_dispatch.c
-    matrix-c/gemm_scalar.c
-    matrix-c/gemm_sse42.c
+    matrix-c/gemm.c
     matrix-c/gemv.c
     matrix-c/solve.c
     matrix-c/transpose.c
@@ -87,24 +83,31 @@ target_include_directories(finkit_matrix
 
 target_compile_definitions(finkit_matrix PRIVATE FC_STATIC_BUILD FC_ENABLE_INTERNAL_TESTS)
 
-# Set compile flags for SIMD variants using detected flags
-set_source_files_properties(matrix-c/gemm_sse42.c PROPERTIES COMPILE_FLAGS "${FC_SSE42_FLAGS}")
-set_source_files_properties(matrix-c/gemm_avx2.c PROPERTIES COMPILE_FLAGS "${FC_AVX2_FLAGS}")
-set_source_files_properties(matrix-c/gemm_avx512.c PROPERTIES COMPILE_FLAGS "${FC_AVX512_FLAGS}")
-
 # For files with multiple SIMD paths, use the highest available
 if(FC_SIMD_LEVEL STREQUAL "AVX512")
+    set_source_files_properties(matrix-c/gemm.c PROPERTIES COMPILE_FLAGS "${FC_AVX512_FLAGS}")
     set_source_files_properties(matrix-c/gemv.c PROPERTIES COMPILE_FLAGS "${FC_AVX512_FLAGS}")
     set_source_files_properties(matrix-c/transpose.c PROPERTIES COMPILE_FLAGS "${FC_AVX512_FLAGS}")
     set_source_files_properties(matrix-c/vector_ops.c PROPERTIES COMPILE_FLAGS "${FC_AVX512_FLAGS}")
+    set_source_files_properties(matrix-c/decompose.c PROPERTIES COMPILE_FLAGS "${FC_AVX512_FLAGS}")
+    set_source_files_properties(matrix-c/solve.c PROPERTIES COMPILE_FLAGS "${FC_AVX512_FLAGS}")
+    set_source_files_properties(matrix-c/tridiag.c PROPERTIES COMPILE_FLAGS "${FC_AVX512_FLAGS}")
 elseif(FC_SIMD_LEVEL STREQUAL "AVX2")
+    set_source_files_properties(matrix-c/gemm.c PROPERTIES COMPILE_FLAGS "${FC_AVX2_FLAGS}")
     set_source_files_properties(matrix-c/gemv.c PROPERTIES COMPILE_FLAGS "${FC_AVX2_FLAGS}")
     set_source_files_properties(matrix-c/transpose.c PROPERTIES COMPILE_FLAGS "${FC_AVX2_FLAGS}")
     set_source_files_properties(matrix-c/vector_ops.c PROPERTIES COMPILE_FLAGS "${FC_AVX2_FLAGS}")
+    set_source_files_properties(matrix-c/decompose.c PROPERTIES COMPILE_FLAGS "${FC_AVX2_FLAGS}")
+    set_source_files_properties(matrix-c/solve.c PROPERTIES COMPILE_FLAGS "${FC_AVX2_FLAGS}")
+    set_source_files_properties(matrix-c/tridiag.c PROPERTIES COMPILE_FLAGS "${FC_AVX2_FLAGS}")
 elseif(FC_SIMD_LEVEL STREQUAL "SSE42")
+    set_source_files_properties(matrix-c/gemm.c PROPERTIES COMPILE_FLAGS "${FC_SSE42_FLAGS}")
     set_source_files_properties(matrix-c/gemv.c PROPERTIES COMPILE_FLAGS "${FC_SSE42_FLAGS}")
     set_source_files_properties(matrix-c/transpose.c PROPERTIES COMPILE_FLAGS "${FC_SSE42_FLAGS}")
     set_source_files_properties(matrix-c/vector_ops.c PROPERTIES COMPILE_FLAGS "${FC_SSE42_FLAGS}")
+    set_source_files_properties(matrix-c/decompose.c PROPERTIES COMPILE_FLAGS "${FC_SSE42_FLAGS}")
+    set_source_files_properties(matrix-c/solve.c PROPERTIES COMPILE_FLAGS "${FC_SSE42_FLAGS}")
+    set_source_files_properties(matrix-c/tridiag.c PROPERTIES COMPILE_FLAGS "${FC_SSE42_FLAGS}")
 endif()
 
 # Create base static library (without platform)
