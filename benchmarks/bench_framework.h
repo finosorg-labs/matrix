@@ -139,6 +139,7 @@ int fc_bench_result_load(fc_bench_result_t* result, const char* filename);
 typedef struct {
     const char* name;
     size_t data_size;        /* Size of data being processed */
+    double flop_count;       /* Floating point operations per iteration */
     uint64_t min_iterations; /* Minimum iterations to run */
     uint64_t max_iterations; /* Maximum iterations to run */
     double min_time_ms;      /* Minimum total time to run */
@@ -152,8 +153,9 @@ typedef struct {
  */
 #define FC_BENCH_CONFIG_DEFAULT                                                                    \
     {                                                                                              \
-        .name = "benchmark", .data_size = 0, .min_iterations = 10, .max_iterations = 1000000,      \
-        .min_time_ms = 100.0, .warmup_ms = 10.0, .enable_stats = 1, .quiet = 0                     \
+        .name = "benchmark", .data_size = 0, .flop_count = 0, .min_iterations = 10,               \
+        .max_iterations = 1000000, .min_time_ms = 100.0, .warmup_ms = 10.0, .enable_stats = 1,    \
+        .quiet = 0                                                                                  \
     }
 
 /**

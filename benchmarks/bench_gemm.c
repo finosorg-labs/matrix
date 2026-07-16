@@ -59,7 +59,8 @@ static void run_gemm_benchmarks(void) {
 
         fc_bench_config_t config = FC_BENCH_CONFIG_DEFAULT;
         config.name = name;
-        config.data_size = 3 * n * n * sizeof(double);
+        /* GEMM: 2*m*n*k FLOPs per iteration */
+        config.flop_count = 2.0 * n * n * n;
         config.min_time_ms = 200.0;
         config.warmup_ms = 50.0;
 

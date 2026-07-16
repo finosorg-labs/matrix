@@ -618,6 +618,10 @@ void fc_bench_run(
             fc_bench_throughput_gb_s(result->data_size * result->iterations, result->elapsed_ms);
     }
 
+    if (config->flop_count > 0 && result->elapsed_ms > 0) {
+        result->gflops = fc_bench_gflops(config->flop_count * result->iterations, result->elapsed_ms);
+    }
+
     /* Get allocation stats if tracking is enabled */
     if (g_track_allocations && result->iterations > 0) {
         result->bytes_per_op  = g_total_bytes_allocated / result->iterations;
