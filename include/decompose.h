@@ -162,6 +162,67 @@ int fc_mat_svd_f64(
  */
 int fc_mat_eig_sym_f64(int64_t n, double* A, int64_t lda, double* w, double* Q, int64_t ldq);
 
+/**
+ * @brief Apply Q^T to a vector using Householder reflectors from QR decomposition
+ *
+ * Applies the transpose of the orthogonal matrix Q from QR decomposition to a vector.
+ * The Q matrix is represented implicitly by Householder vectors stored in the lower
+ * triangle of A (from fc_mat_qr_decompose_f64) and the tau array.
+ *
+ * This function computes: b := Q^T * b
+ * where Q = H_1 * H_2 * ... * H_k (product of Householder reflectors)
+ *
+ * Used in least squares solvers to transform the right-hand side vector before
+ * solving the triangular system.
+ *
+ * Time complexity: O(m*n)
+ * Space complexity: O(1) (in-place operation)
+ * Thread safety: Thread-safe (no shared state)
+ *
+ * @param[in]    m      Number of rows in original matrix (must be >= n)
+ * @param[in]    n      Number of Householder reflectors (must be > 0)
+ * @param[in]    A      Matrix containing Householder vectors from QR decomposition
+ *                      (m×n, row-major), lower triangle contains v_k with implicit unit diagonal
+ * @param[in]    lda    Leading dimension of A (stride, typically n)
+ * @param[in]    tau    Householder scaling factors from QR decomposition (length n)
+ * @param[inout] b      Input vector (length m), overwritten with Q^T * b
+ *
+ * @return FC_OK on success, FC_ERR_INVALID_ARG if inputs invalid
+ */
+int fc_mat_apply_qt_vector_f64(
+    int64_t m,
+    int64_t n,
+    const double* A,
+    int64_t lda,
+    const double* tau,
+    double* b
+);
+
+/**
+ * @brief Solve upper triangular system Rx = b
+ *
+ * Solves the upper triangular linear system R*x = b using backward substitution.
+ * The solution x overwrites the input vector b.
+ *
+ * The matrix R must be non-singular (all diagonal elements non-zero).
+ * Only the upper triangle of R is accessed.
+ *
+ * Used in least squares solvers after QR decomposition to solve R*x = Q^T*b.
+ *
+ * Time complexity: O(n^2)
+ * Space complexity: O(1) (in-place operation)
+ * Thread safety: Thread-safe (no shared state)
+ *
+ * @param[in]    n      Dimension of the system (must be > 0)
+ * @param[in]    R      Upper triangular matrix (n×n, row-major)
+ * @param[in]    ldr    Leading dimension of R (stride, typically n)
+ * @param[inout] b      Input right-hand side (length n), overwritten with solution x
+ *
+ * @return FC_OK on success, FC_ERR_INVALID_ARG if inputs invalid,
+ *         FC_ERR_SINGULAR_MATRIX if diagonal element is zero
+ */
+int fc_mat_solve_triangular_upper_f64(int64_t n, const double* R, int64_t ldr, double* b);
+
 #ifdef __cplusplus
 }
 #endif

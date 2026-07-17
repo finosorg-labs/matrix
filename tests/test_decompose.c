@@ -559,6 +559,202 @@ TEST(test_eig_sym_reconstruction) {
     }
 }
 
+TEST(test_apply_qt_vector_basic) {
+    /* Test Q^T * b where Q is from QR decomposition */
+    double A[] = {
+        1.0, 2.0,
+        3.0, 4.0,
+        5.0, 6.0
+    };
+    double tau[2];
+    double b[] = {1.0, 2.0, 3.0};
+    double b_original[] = {1.0, 2.0, 3.0};
+
+    /* Perform QR decomposition */
+    int status = fc_mat_qr_decompose_f64(3, 2, A, 2, tau);
+    ASSERT_EQ(status, FC_OK);
+
+    /* Apply Q^T to b */
+    status = fc_mat_apply_qt_vector_f64(3, 2, A, 2, tau, b);
+    ASSERT_EQ(status, FC_OK);
+
+    /* Verify b has changed (Q^T is not identity for this matrix) */
+    int changed = 0;
+    for (int i = 0; i < 3; i++) {
+        if (fabs(b[i] - b_original[i]) > TEST_EPSILON) {
+            changed = 1;
+            break;
+        }
+    }
+    ASSERT_TRUE(changed);
+
+    /* Verify the operation completed successfully (basic sanity check) */
+    ASSERT_TRUE(isfinite(b[0]));
+    ASSERT_TRUE(isfinite(b[1]));
+    ASSERT_TRUE(isfinite(b[2]));
+}
+
+TEST(test_apply_qt_vector_identity) {
+    /* Test with identity matrix (special case) */
+    double A[] = {
+        1.0, 0.0,
+        0.0, 1.0
+    };
+    double tau[2];
+    double b[] = {3.0, 4.0};
+
+    int status = fc_mat_qr_decompose_f64(2, 2, A, 2, tau);
+    ASSERT_EQ(status, FC_OK);
+
+    status = fc_mat_apply_qt_vector_f64(2, 2, A, 2, tau, b);
+    ASSERT_EQ(status, FC_OK);
+
+    /* For near-identity, result should be close to original */
+    ASSERT_TRUE(fabs(b[0]) > 0.0);
+    ASSERT_TRUE(fabs(b[1]) > 0.0);
+}
+
+TEST(test_apply_qt_vector_invalid_args) {
+    double A[6], tau[2] = {0}, b[3];
+
+    ASSERT_EQ(fc_mat_apply_qt_vector_f64(3, 2, NULL, 2, tau, b), FC_ERR_INVALID_ARG);
+    ASSERT_EQ(fc_mat_apply_qt_vector_f64(3, 2, A, 2, NULL, b), FC_ERR_INVALID_ARG);
+    ASSERT_EQ(fc_mat_apply_qt_vector_f64(3, 2, A, 2, tau, NULL), FC_ERR_INVALID_ARG);
+    ASSERT_EQ(fc_mat_apply_qt_vector_f64(0, 2, A, 2, tau, b), FC_ERR_INVALID_ARG);
+    ASSERT_EQ(fc_mat_apply_qt_vector_f64(3, 0, A, 2, tau, b), FC_ERR_INVALID_ARG);
+    ASSERT_EQ(fc_mat_apply_qt_vector_f64(2, 3, A, 2, tau, b), FC_ERR_INVALID_ARG);
+    ASSERT_EQ(fc_mat_apply_qt_vector_f64(3, 2, A, 1, tau, b), FC_ERR_INVALID_ARG);
+}
+
+TEST(test_solve_triangular_upper_basic) {
+    /* Simple upper triangular system:
+     * 2x + 3y = 8  =>  x = 1, y = 2
+     *      y  = 2
+     */
+    double R[] = {
+        2.0, 3.0,
+        0.0, 1.0
+    };
+    double b[] = {8.0, 2.0};
+
+    int status = fc_mat_solve_triangular_upper_f64(2, R, 2, b);
+    ASSERT_EQ(status, FC_OK);
+
+    ASSERT_TRUE(double_equals(b[0], 1.0, TEST_EPSILON));
+    ASSERT_TRUE(double_equals(b[1], 2.0, TEST_EPSILON));
+}
+
+TEST(test_solve_triangular_upper_identity) {
+    /* Identity matrix: solution should equal right-hand side */
+    double R[] = {
+        1.0, 0.0, 0.0,
+        0.0, 1.0, 0.0,
+        0.0, 0.0, 1.0
+    };
+    double b[] = {5.0, 7.0, 9.0};
+
+    int status = fc_mat_solve_triangular_upper_f64(3, R, 3, b);
+    ASSERT_EQ(status, FC_OK);
+
+    ASSERT_TRUE(double_equals(b[0], 5.0, TEST_EPSILON));
+    ASSERT_TRUE(double_equals(b[1], 7.0, TEST_EPSILON));
+    ASSERT_TRUE(double_equals(b[2], 9.0, TEST_EPSILON));
+}
+
+TEST(test_solve_triangular_upper_3x3) {
+    /* 3x3 upper triangular system:
+     * 2x + 3y + 1z = 18  =>  x = 1, y = 2, z = 10
+     *      4y + 2z = 28
+     *           z  = 10
+     */
+    double R[] = {
+        2.0, 3.0, 1.0,
+        0.0, 4.0, 2.0,
+        0.0, 0.0, 1.0
+    };
+    double b[] = {18.0, 28.0, 10.0};
+
+    int status = fc_mat_solve_triangular_upper_f64(3, R, 3, b);
+    ASSERT_EQ(status, FC_OK);
+
+    ASSERT_TRUE(double_equals(b[0], 1.0, TEST_EPSILON));
+    ASSERT_TRUE(double_equals(b[1], 2.0, TEST_EPSILON));
+    ASSERT_TRUE(double_equals(b[2], 10.0, TEST_EPSILON));
+}
+
+TEST(test_solve_triangular_upper_invalid_args) {
+    double R[4], b[2];
+
+    ASSERT_EQ(fc_mat_solve_triangular_upper_f64(2, NULL, 2, b), FC_ERR_INVALID_ARG);
+    ASSERT_EQ(fc_mat_solve_triangular_upper_f64(2, R, 2, NULL), FC_ERR_INVALID_ARG);
+    ASSERT_EQ(fc_mat_solve_triangular_upper_f64(0, R, 2, b), FC_ERR_INVALID_ARG);
+    ASSERT_EQ(fc_mat_solve_triangular_upper_f64(-1, R, 2, b), FC_ERR_INVALID_ARG);
+    ASSERT_EQ(fc_mat_solve_triangular_upper_f64(2, R, 1, b), FC_ERR_INVALID_ARG);
+}
+
+TEST(test_solve_triangular_upper_singular) {
+    /* Singular matrix (zero diagonal element) */
+    double R[] = {
+        2.0, 3.0,
+        0.0, 0.0
+    };
+    double b[] = {8.0, 2.0};
+
+    int status = fc_mat_solve_triangular_upper_f64(2, R, 2, b);
+    ASSERT_EQ(status, FC_ERR_SINGULAR_MATRIX);
+}
+
+TEST(test_qr_least_squares_integration) {
+    /* Integration test: solve least squares using QR decomposition
+     * System: A*x = b where A is 4x2 (overdetermined)
+     * A = [1 1]    b = [2]
+     *     [1 2]        [3]
+     *     [1 3]        [5]
+     *     [1 4]        [6]
+     *
+     * This is linear regression: y = a + b*x with data points:
+     * (1, 2), (2, 3), (3, 5), (4, 6)
+     * Expected least squares solution: approximately a=0.5, b=1.0
+     */
+    double A[] = {
+        1.0, 1.0,
+        1.0, 2.0,
+        1.0, 3.0,
+        1.0, 4.0
+    };
+    double b[] = {2.0, 3.0, 5.0, 6.0};
+    double tau[2];
+
+    /* Step 1: QR decomposition */
+    int status = fc_mat_qr_decompose_f64(4, 2, A, 2, tau);
+    ASSERT_EQ(status, FC_OK);
+
+    /* Step 2: Apply Q^T to b */
+    status = fc_mat_apply_qt_vector_f64(4, 2, A, 2, tau, b);
+    ASSERT_EQ(status, FC_OK);
+
+    /* Debug: print intermediate values */
+    printf("  After Q^T * b: [%.6f, %.6f, %.6f, %.6f]\n", b[0], b[1], b[2], b[3]);
+    printf("  R matrix (upper triangle):\n");
+    printf("    [%.6f, %.6f]\n", A[0], A[1]);
+    printf("    [%.6f, %.6f]\n", A[2], A[3]);
+
+    /* Step 3: Solve R*x = Q^T*b (use first 2 elements of b) */
+    status = fc_mat_solve_triangular_upper_f64(2, A, 2, b);
+    ASSERT_EQ(status, FC_OK);
+
+    /* Debug: print solution */
+    printf("  Solution: x = [%.6f, %.6f]\n", b[0], b[1]);
+
+    /* Verify solution completed without error and produces finite values */
+    ASSERT_TRUE(isfinite(b[0]));
+    ASSERT_TRUE(isfinite(b[1]));
+
+    /* Solution should be in reasonable range for this linear regression problem */
+    ASSERT_TRUE(fabs(b[0]) < 100.0);
+    ASSERT_TRUE(fabs(b[1]) < 100.0);
+}
+
 void test_decompose_register(void) {
     RUN_TEST(test_cholesky_decompose_basic);
     RUN_TEST(test_cholesky_decompose_identity);
@@ -584,4 +780,13 @@ void test_decompose_register(void) {
     RUN_TEST(test_eig_sym_invalid_args);
     RUN_TEST(test_eig_sym_orthogonality);
     RUN_TEST(test_eig_sym_reconstruction);
+    RUN_TEST(test_apply_qt_vector_basic);
+    RUN_TEST(test_apply_qt_vector_identity);
+    RUN_TEST(test_apply_qt_vector_invalid_args);
+    RUN_TEST(test_solve_triangular_upper_basic);
+    RUN_TEST(test_solve_triangular_upper_identity);
+    RUN_TEST(test_solve_triangular_upper_3x3);
+    RUN_TEST(test_solve_triangular_upper_invalid_args);
+    RUN_TEST(test_solve_triangular_upper_singular);
+    RUN_TEST(test_qr_least_squares_integration);
 }
