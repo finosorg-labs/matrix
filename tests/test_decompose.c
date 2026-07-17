@@ -560,38 +560,50 @@ TEST(test_eig_sym_reconstruction) {
 }
 
 TEST(test_apply_qt_vector_basic) {
-    /* Test Q^T * b where Q is from QR decomposition */
+    /* Test Q^T * b where Q is from QR decomposition
+     * Use a simple matrix with known QR decomposition result */
+    /* Matrix [[1,1],[1,2],[1,3]] in column-major format:
+     * Column 0: [1, 1, 1]
+     * Column 1: [1, 2, 3] */
     double A[] = {
-        1.0, 2.0,
-        3.0, 4.0,
-        5.0, 6.0
+        1.0, 1.0, 1.0,  /* Column 0 */
+        1.0, 2.0, 3.0   /* Column 1 */
     };
     double tau[2];
-    double b[] = {1.0, 2.0, 3.0};
-    double b_original[] = {1.0, 2.0, 3.0};
+    double b[] = {3.0, 5.0, 7.0};
 
-    /* Perform QR decomposition */
-    int status = fc_mat_qr_decompose_f64(3, 2, A, 2, tau);
+    /* Perform QR decomposition (column-major, lda=3) */
+    int status = fc_mat_qr_decompose_f64(3, 2, A, 3, tau);
     ASSERT_EQ(status, FC_OK);
 
     /* Apply Q^T to b */
-    status = fc_mat_apply_qt_vector_f64(3, 2, A, 2, tau, b);
+    status = fc_mat_apply_qt_vector_f64(3, 2, A, 3, tau, b);
     ASSERT_EQ(status, FC_OK);
 
-    /* Verify b has changed (Q^T is not identity for this matrix) */
-    int changed = 0;
-    for (int i = 0; i < 3; i++) {
-        if (fabs(b[i] - b_original[i]) > TEST_EPSILON) {
-            changed = 1;
-            break;
-        }
-    }
-    ASSERT_TRUE(changed);
+    /* For this specific matrix and vector, we can verify the result
+     * by solving the least squares problem manually:
+     * The matrix [[1,1],[1,2],[1,3]] with y=[3,5,7] has exact solution beta=[1,2]
+     * After Q^T, the first two elements should equal R*beta
+     * R = [[-1.732, -3.464], [0, -1.633]] (approximately)
+     * Q^T*y should have first two elements that when solved give beta=[1,2]
+     */
 
-    /* Verify the operation completed successfully (basic sanity check) */
-    ASSERT_TRUE(isfinite(b[0]));
-    ASSERT_TRUE(isfinite(b[1]));
-    ASSERT_TRUE(isfinite(b[2]));
+    /* Verify: solve R*x = Q^T*y for first 2 elements */
+    double x[2];
+    x[0] = b[0];
+    x[1] = b[1];
+
+    printf("  Q^T*y = [%.6f, %.6f, %.6f]\n", b[0], b[1], b[2]);
+
+    status = fc_mat_solve_triangular_upper_f64(2, A, 3, x);
+    ASSERT_EQ(status, FC_OK);
+
+    printf("  Solution x = [%.6f, %.6f]\n", x[0], x[1]);
+    printf("  Expected: [1.0, 2.0]\n");
+
+    /* The solution should be approximately [1.0, 2.0] */
+    ASSERT_TRUE(fabs(x[0] - 1.0) < 1e-6);
+    ASSERT_TRUE(fabs(x[1] - 2.0) < 1e-6);
 }
 
 TEST(test_apply_qt_vector_identity) {
@@ -630,10 +642,13 @@ TEST(test_solve_triangular_upper_basic) {
     /* Simple upper triangular system:
      * 2x + 3y = 8  =>  x = 1, y = 2
      *      y  = 2
+     * Matrix in column-major format:
+     * Column 0: [2.0, 0.0]
+     * Column 1: [3.0, 1.0]
      */
     double R[] = {
-        2.0, 3.0,
-        0.0, 1.0
+        2.0, 0.0,  /* Column 0 */
+        3.0, 1.0   /* Column 1 */
     };
     double b[] = {8.0, 2.0};
 
@@ -666,11 +681,15 @@ TEST(test_solve_triangular_upper_3x3) {
      * 2x + 3y + 1z = 18  =>  x = 1, y = 2, z = 10
      *      4y + 2z = 28
      *           z  = 10
+     * Matrix in column-major format:
+     * Column 0: [2.0, 0.0, 0.0]
+     * Column 1: [3.0, 4.0, 0.0]
+     * Column 2: [1.0, 2.0, 1.0]
      */
     double R[] = {
-        2.0, 3.0, 1.0,
-        0.0, 4.0, 2.0,
-        0.0, 0.0, 1.0
+        2.0, 0.0, 0.0,  /* Column 0 */
+        3.0, 4.0, 0.0,  /* Column 1 */
+        1.0, 2.0, 1.0   /* Column 2 */
     };
     double b[] = {18.0, 28.0, 10.0};
 

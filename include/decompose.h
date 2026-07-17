@@ -61,8 +61,8 @@ int fc_mat_lu_decompose_f64(int64_t n, double* A, int64_t lda, int64_t* ipiv);
  *
  * @param[in]    m     Number of rows in A (must be >= n)
  * @param[in]    n     Number of columns in A (must be > 0)
- * @param[inout] A     Input matrix (m×n, row-major), overwritten with Q and R factors
- * @param[in]    lda   Leading dimension of A (stride, typically n)
+ * @param[inout] A     Input matrix (m×n, column-major), overwritten with Q and R factors
+ * @param[in]    lda   Leading dimension of A (stride between columns, typically m)
  * @param[out]   tau   Householder scaling factors (length n)
  *
  * @return FC_OK on success, FC_ERR_INVALID_ARG if inputs invalid,
@@ -182,8 +182,9 @@ int fc_mat_eig_sym_f64(int64_t n, double* A, int64_t lda, double* w, double* Q, 
  * @param[in]    m      Number of rows in original matrix (must be >= n)
  * @param[in]    n      Number of Householder reflectors (must be > 0)
  * @param[in]    A      Matrix containing Householder vectors from QR decomposition
- *                      (m×n, row-major), lower triangle contains v_k with implicit unit diagonal
- * @param[in]    lda    Leading dimension of A (stride, typically n)
+ *                      (m×n, column-major), each column k contains v_k with implicit unit first
+ * element
+ * @param[in]    lda    Leading dimension of A (stride between columns, typically m)
  * @param[in]    tau    Householder scaling factors from QR decomposition (length n)
  * @param[inout] b      Input vector (length m), overwritten with Q^T * b
  *
@@ -214,8 +215,8 @@ int fc_mat_apply_qt_vector_f64(
  * Thread safety: Thread-safe (no shared state)
  *
  * @param[in]    n      Dimension of the system (must be > 0)
- * @param[in]    R      Upper triangular matrix (n×n, row-major)
- * @param[in]    ldr    Leading dimension of R (stride, typically n)
+ * @param[in]    R      Upper triangular matrix (n×n, column-major)
+ * @param[in]    ldr    Leading dimension of R (stride between columns, typically n)
  * @param[inout] b      Input right-hand side (length n), overwritten with solution x
  *
  * @return FC_OK on success, FC_ERR_INVALID_ARG if inputs invalid,
