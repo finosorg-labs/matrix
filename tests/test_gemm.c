@@ -160,9 +160,14 @@ TEST(test_gemm_avx2_both_remainder) {
                     0.0, 0.0, 0.0,
                     0.0, 0.0, 0.0};
     double C[9] = {0.0};
+    double C_ref[9] = {0.0};
 
     int status = fc_mat_gemm_f64_avx2(3, 3, 5, 1.0, A, 5, B, 3, 0.0, C, 3);
     ASSERT_EQ(status, FC_OK);
+
+    /* Compute reference and verify */
+    gemm_reference(3, 3, 5, 1.0, A, 5, B, 3, 0.0, C_ref, 3);
+    ASSERT_TRUE(matrices_equal(C, C_ref, 3, 3, 3, 3, TEST_EPSILON_RELAXED));
 }
 
 TEST(test_gemm_avx2_direct) {
@@ -196,9 +201,13 @@ TEST(test_gemm_avx2_m_remainder) {
                     0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0,
                     0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0};
     double C[16] = {0.0};
+    double C_ref[16] = {0.0};
 
     int status = fc_mat_gemm_f64_avx2(2, 8, 5, 1.0, A, 5, B, 8, 0.0, C, 8);
     ASSERT_EQ(status, FC_OK);
+
+    gemm_reference(2, 8, 5, 1.0, A, 5, B, 8, 0.0, C_ref, 8);
+    ASSERT_TRUE(matrices_equal(C, C_ref, 2, 8, 8, 8, TEST_EPSILON_RELAXED));
 }
 
 TEST(test_gemm_avx2_n_remainder) {
@@ -211,9 +220,13 @@ TEST(test_gemm_avx2_n_remainder) {
                     0.0, 0.0, 1.0, 0.0, 0.0,
                     0.0, 0.0, 0.0, 1.0, 0.0};
     double C[15] = {0.0};
+    double C_ref[15] = {0.0};
 
     int status = fc_mat_gemm_f64_avx2(3, 5, 4, 1.0, A, 4, B, 5, 0.0, C, 5);
     ASSERT_EQ(status, FC_OK);
+
+    gemm_reference(3, 5, 4, 1.0, A, 4, B, 5, 0.0, C_ref, 5);
+    ASSERT_TRUE(matrices_equal(C, C_ref, 3, 5, 5, 5, TEST_EPSILON_RELAXED));
 }
 
 TEST(test_gemm_avx2_n_remainder_beta) {
@@ -229,9 +242,16 @@ TEST(test_gemm_avx2_n_remainder_beta) {
                     1.0, 1.0, 1.0, 1.0, 1.0,
                     1.0, 1.0, 1.0, 1.0, 1.0,
                     1.0, 1.0, 1.0, 1.0, 1.0};
+    double C_ref[20] = {1.0, 1.0, 1.0, 1.0, 1.0,
+                        1.0, 1.0, 1.0, 1.0, 1.0,
+                        1.0, 1.0, 1.0, 1.0, 1.0,
+                        1.0, 1.0, 1.0, 1.0, 1.0};
 
     int status = fc_mat_gemm_f64_avx2(3, 5, 4, 1.0, A, 4, B, 5, 0.5, C, 5);
     ASSERT_EQ(status, FC_OK);
+
+    gemm_reference(3, 5, 4, 1.0, A, 4, B, 5, 0.5, C_ref, 5);
+    ASSERT_TRUE(matrices_equal(C, C_ref, 3, 5, 5, 5, TEST_EPSILON_RELAXED));
 }
 
 TEST(test_gemm_avx2_with_beta) {
@@ -242,9 +262,14 @@ TEST(test_gemm_avx2_with_beta) {
                     0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
     double C[16] = {1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
                     2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0};
+    double C_ref[16] = {1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+                        2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0};
 
     int status = fc_mat_gemm_f64_avx2(2, 8, 2, 2.0, A, 2, B, 8, 3.0, C, 8);
     ASSERT_EQ(status, FC_OK);
+
+    gemm_reference(2, 8, 2, 2.0, A, 2, B, 8, 3.0, C_ref, 8);
+    ASSERT_TRUE(matrices_equal(C, C_ref, 2, 8, 8, 8, TEST_EPSILON_RELAXED));
 }
 
 TEST(test_gemm_avx2_with_beta_1) {
@@ -690,15 +715,18 @@ TEST(test_gemm_scalar_10x8_beta) {
     /* Test 10x8 matrix with beta != 0 to trigger:
      * - Bottom edge with full N blocks (lines 193-200)
      */
-    double A[80], B[64], C[80];
+    double A[80], B[64], C[80], C_ref[80];
 
     for (int i = 0; i < 80; i++) A[i] = 1.0;
     for (int i = 0; i < 64; i++) B[i] = 1.0;
     for (int i = 0; i < 80; i++) C[i] = 1.0;
+    for (int i = 0; i < 80; i++) C_ref[i] = 1.0;
 
     int status = fc_mat_gemm_f64_scalar(10, 8, 8, 1.0, A, 8, B, 8, 0.5, C, 8);
     ASSERT_EQ(status, FC_OK);
-    ASSERT_TRUE(C[0] > 0.0);
+
+    gemm_reference(10, 8, 8, 1.0, A, 8, B, 8, 0.5, C_ref, 8);
+    ASSERT_TRUE(matrices_equal(C, C_ref, 10, 8, 8, 8, TEST_EPSILON_RELAXED));
 }
 
 TEST(test_gemm_scalar_16x10_k16) {
@@ -706,15 +734,18 @@ TEST(test_gemm_scalar_16x10_k16) {
      * - Multiple M blocks with right edge (lines 179-186)
      * - Prefetch (lines 74-75)
      */
-    double A[256], B[160], C[160];
+    double A[256], B[160], C[160], C_ref[160];
 
     for (int i = 0; i < 256; i++) A[i] = 1.0;
     for (int i = 0; i < 160; i++) B[i] = 1.0;
     for (int i = 0; i < 160; i++) C[i] = 0.0;
+    for (int i = 0; i < 160; i++) C_ref[i] = 0.0;
 
     int status = fc_mat_gemm_f64_scalar(16, 10, 16, 1.0, A, 16, B, 10, 0.0, C, 10);
     ASSERT_EQ(status, FC_OK);
-    ASSERT_TRUE(C[0] > 0.0);
+
+    gemm_reference(16, 10, 16, 1.0, A, 16, B, 10, 0.0, C_ref, 10);
+    ASSERT_TRUE(matrices_equal(C, C_ref, 16, 10, 10, 10, TEST_EPSILON_RELAXED));
 }
 
 TEST(test_gemm_scalar_8x10_k16) {
@@ -722,15 +753,18 @@ TEST(test_gemm_scalar_8x10_k16) {
      * - Full 8x8 block (lines 179-186: right edge with full M blocks)
      * - Prefetch (lines 74-75: k > 8)
      */
-    double A[128], B[160], C[80];
+    double A[128], B[160], C[80], C_ref[80];
 
     for (int i = 0; i < 128; i++) A[i] = 1.0;
     for (int i = 0; i < 160; i++) B[i] = 1.0;
     for (int i = 0; i < 80; i++) C[i] = 0.0;
+    for (int i = 0; i < 80; i++) C_ref[i] = 0.0;
 
     int status = fc_mat_gemm_f64_scalar(8, 10, 16, 1.0, A, 16, B, 10, 0.0, C, 10);
     ASSERT_EQ(status, FC_OK);
-    ASSERT_TRUE(C[0] > 0.0);
+
+    gemm_reference(8, 10, 16, 1.0, A, 16, B, 10, 0.0, C_ref, 10);
+    ASSERT_TRUE(matrices_equal(C, C_ref, 8, 10, 10, 10, TEST_EPSILON_RELAXED));
 }
 
 TEST(test_gemm_scalar_8x8_beta_k16) {
@@ -738,15 +772,18 @@ TEST(test_gemm_scalar_8x8_beta_k16) {
      * - Beta path in 8x8 kernel (lines 111-113)
      * - Prefetch with k > 8 (lines 74-75)
      */
-    double A[128], B[128], C[64];
+    double A[128], B[128], C[64], C_ref[64];
 
     for (int i = 0; i < 128; i++) A[i] = 1.0;
     for (int i = 0; i < 128; i++) B[i] = 1.0;
     for (int i = 0; i < 64; i++) C[i] = 2.0;
+    for (int i = 0; i < 64; i++) C_ref[i] = 2.0;
 
     int status = fc_mat_gemm_f64_scalar(8, 8, 16, 1.0, A, 16, B, 8, 0.5, C, 8);
     ASSERT_EQ(status, FC_OK);
-    ASSERT_TRUE(C[0] > 0.0);
+
+    gemm_reference(8, 8, 16, 1.0, A, 16, B, 8, 0.5, C_ref, 8);
+    ASSERT_TRUE(matrices_equal(C, C_ref, 8, 8, 8, 8, TEST_EPSILON_RELAXED));
 }
 
 TEST(test_gemm_scalar_direct) {
@@ -776,12 +813,13 @@ TEST(test_gemm_scalar_edge_cases) {
     double B[35] = {1,2,3,4,5,6,7, 8,9,10,11,12,13,14, 15,16,17,18,19,20,21,
                     22,23,24,25,26,27,28, 29,30,31,32,33,34,35};
     double C[12] = {0};
+    double C_ref[12] = {0};
 
     int status = fc_mat_gemm_f64_scalar(3, 4, 5, 1.0, A, 5, B, 7, 0.0, C, 4);
     ASSERT_EQ(status, FC_OK);
 
-    /* Just verify it completes without error - exact values less important */
-    ASSERT_TRUE(C[0] != 0.0);
+    gemm_reference(3, 4, 5, 1.0, A, 5, B, 7, 0.0, C_ref, 4);
+    ASSERT_TRUE(matrices_equal(C, C_ref, 3, 4, 4, 4, TEST_EPSILON_RELAXED));
 }
 
 TEST(test_gemm_scalar_large_4x4) {
@@ -814,9 +852,15 @@ TEST(test_gemm_scalar_m_remainder_beta) {
     double C[12] = {1.0, 1.0, 1.0, 1.0,
                     1.0, 1.0, 1.0, 1.0,
                     1.0, 1.0, 1.0, 1.0};
+    double C_ref[12] = {1.0, 1.0, 1.0, 1.0,
+                        1.0, 1.0, 1.0, 1.0,
+                        1.0, 1.0, 1.0, 1.0};
 
     int status = fc_mat_gemm_f64_scalar(3, 4, 4, 1.0, A, 4, B, 4, 0.5, C, 4);
     ASSERT_EQ(status, FC_OK);
+
+    gemm_reference(3, 4, 4, 1.0, A, 4, B, 4, 0.5, C_ref, 4);
+    ASSERT_TRUE(matrices_equal(C, C_ref, 3, 4, 4, 4, TEST_EPSILON_RELAXED));
 }
 
 TEST(test_gemm_scalar_n_remainder) {
@@ -830,9 +874,13 @@ TEST(test_gemm_scalar_n_remainder) {
                     0.0, 0.0, 1.0, 0.0, 1.0,
                     0.0, 0.0, 0.0, 1.0, 1.0};
     double C[20] = {0.0};
+    double C_ref[20] = {0.0};
 
     int status = fc_mat_gemm_f64_scalar(4, 5, 4, 1.0, A, 4, B, 5, 0.0, C, 5);
     ASSERT_EQ(status, FC_OK);
+
+    gemm_reference(4, 5, 4, 1.0, A, 4, B, 5, 0.0, C_ref, 5);
+    ASSERT_TRUE(matrices_equal(C, C_ref, 4, 5, 5, 5, TEST_EPSILON_RELAXED));
 }
 
 TEST(test_gemm_scalar_n_remainder_beta) {
@@ -849,27 +897,35 @@ TEST(test_gemm_scalar_n_remainder_beta) {
                     1.0, 1.0, 1.0, 1.0, 1.0,
                     1.0, 1.0, 1.0, 1.0, 1.0,
                     1.0, 1.0, 1.0, 1.0, 1.0};
+    double C_ref[20] = {1.0, 1.0, 1.0, 1.0, 1.0,
+                        1.0, 1.0, 1.0, 1.0, 1.0,
+                        1.0, 1.0, 1.0, 1.0, 1.0,
+                        1.0, 1.0, 1.0, 1.0, 1.0};
 
     int status = fc_mat_gemm_f64_scalar(4, 5, 4, 1.0, A, 4, B, 5, 0.5, C, 5);
     ASSERT_EQ(status, FC_OK);
+
+    gemm_reference(4, 5, 4, 1.0, A, 4, B, 5, 0.5, C_ref, 5);
+    ASSERT_TRUE(matrices_equal(C, C_ref, 4, 5, 5, 5, TEST_EPSILON_RELAXED));
 }
 
 TEST(test_gemm_scalar_with_beta) {
     /* Test scalar implementation with non-zero beta */
-    double A[16], B[16], C[16];
+    double A[16], B[16], C[16], C_ref[16];
 
     for (int i = 0; i < 16; i++) {
         A[i] = 1.0;
         B[i] = 1.0;
         C[i] = 2.0;  /* Pre-initialize C */
+        C_ref[i] = 2.0;
     }
 
     /* C = 1.0 * A*B + 0.5 * C */
     int status = fc_mat_gemm_f64_scalar(4, 4, 4, 1.0, A, 4, B, 4, 0.5, C, 4);
     ASSERT_EQ(status, FC_OK);
 
-    /* Each element: 1.0 * 4.0 + 0.5 * 2.0 = 5.0 */
-    ASSERT_TRUE(double_equals(C[0], 5.0, TEST_EPSILON));
+    gemm_reference(4, 4, 4, 1.0, A, 4, B, 4, 0.5, C_ref, 4);
+    ASSERT_TRUE(matrices_equal(C, C_ref, 4, 4, 4, 4, TEST_EPSILON_RELAXED));
 }
 
 TEST(test_gemm_sse42_both_remainder) {
@@ -883,9 +939,13 @@ TEST(test_gemm_sse42_both_remainder) {
                     0.0, 0.0, 0.0,
                     0.0, 0.0, 0.0};
     double C[9] = {0.0};
+    double C_ref[9] = {0.0};
 
     int status = fc_mat_gemm_f64_sse42(3, 3, 5, 1.0, A, 5, B, 3, 0.0, C, 3);
     ASSERT_EQ(status, FC_OK);
+
+    gemm_reference(3, 3, 5, 1.0, A, 5, B, 3, 0.0, C_ref, 3);
+    ASSERT_TRUE(matrices_equal(C, C_ref, 3, 3, 3, 3, TEST_EPSILON_RELAXED));
 }
 
 TEST(test_gemm_sse42_direct) {
@@ -931,9 +991,13 @@ TEST(test_gemm_sse42_m_remainder) {
                     0.0, 0.0, 1.0, 0.0,
                     0.0, 0.0, 0.0, 1.0};
     double C[20] = {0.0};
+    double C_ref[20] = {0.0};
 
     int status = fc_mat_gemm_f64_sse42(5, 4, 4, 1.0, A, 4, B, 4, 0.0, C, 4);
     ASSERT_EQ(status, FC_OK);
+
+    gemm_reference(5, 4, 4, 1.0, A, 4, B, 4, 0.0, C_ref, 4);
+    ASSERT_TRUE(matrices_equal(C, C_ref, 5, 4, 4, 4, TEST_EPSILON_RELAXED));
 }
 
 TEST(test_gemm_sse42_n_remainder) {
@@ -946,9 +1010,13 @@ TEST(test_gemm_sse42_n_remainder) {
                     0.0, 0.0, 1.0, 0.0, 1.0,
                     0.0, 0.0, 0.0, 1.0, 1.0};
     double C[15] = {0.0};
+    double C_ref[15] = {0.0};
 
     int status = fc_mat_gemm_f64_sse42(3, 5, 4, 1.0, A, 4, B, 5, 0.0, C, 5);
     ASSERT_EQ(status, FC_OK);
+
+    gemm_reference(3, 5, 4, 1.0, A, 4, B, 5, 0.0, C_ref, 5);
+    ASSERT_TRUE(matrices_equal(C, C_ref, 3, 5, 5, 5, TEST_EPSILON_RELAXED));
 }
 
 TEST(test_gemm_sse42_n_remainder_beta) {
@@ -963,9 +1031,15 @@ TEST(test_gemm_sse42_n_remainder_beta) {
     double C[15] = {1.0, 1.0, 1.0, 1.0, 1.0,
                     1.0, 1.0, 1.0, 1.0, 1.0,
                     1.0, 1.0, 1.0, 1.0, 1.0};
+    double C_ref[15] = {1.0, 1.0, 1.0, 1.0, 1.0,
+                        1.0, 1.0, 1.0, 1.0, 1.0,
+                        1.0, 1.0, 1.0, 1.0, 1.0};
 
     int status = fc_mat_gemm_f64_sse42(3, 5, 4, 1.0, A, 4, B, 5, 0.5, C, 5);
     ASSERT_EQ(status, FC_OK);
+
+    gemm_reference(3, 5, 4, 1.0, A, 4, B, 5, 0.5, C_ref, 5);
+    ASSERT_TRUE(matrices_equal(C, C_ref, 3, 5, 5, 5, TEST_EPSILON_RELAXED));
 }
 
 TEST(test_gemm_sse42_n_remainder_m4) {
@@ -998,9 +1072,16 @@ TEST(test_gemm_sse42_with_beta) {
                     1.0, 1.0, 1.0, 1.0,
                     1.0, 1.0, 1.0, 1.0,
                     1.0, 1.0, 1.0, 1.0};
+    double C_ref[16] = {1.0, 1.0, 1.0, 1.0,
+                        1.0, 1.0, 1.0, 1.0,
+                        1.0, 1.0, 1.0, 1.0,
+                        1.0, 1.0, 1.0, 1.0};
 
     int status = fc_mat_gemm_f64_sse42(4, 4, 4, 1.0, A, 4, B, 4, 0.5, C, 4);
     ASSERT_EQ(status, FC_OK);
+
+    gemm_reference(4, 4, 4, 1.0, A, 4, B, 4, 0.5, C_ref, 4);
+    ASSERT_TRUE(matrices_equal(C, C_ref, 4, 4, 4, 4, TEST_EPSILON_RELAXED));
 }
 
 void test_gemm_register(void) {

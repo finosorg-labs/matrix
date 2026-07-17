@@ -43,14 +43,35 @@ TEST(test_cholesky_decompose_basic) {
         12.0, 37.0, -43.0,
         -16.0, -43.0, 98.0
     };
+    double A_original[] = {
+        4.0, 12.0, -16.0,
+        12.0, 37.0, -43.0,
+        -16.0, -43.0, 98.0
+    };
 
     int status = fc_mat_cholesky_decompose_f64(3, A, 3);
     ASSERT_EQ(status, FC_OK);
 
-    /* Verify L * L^T = original A by checking diagonal elements */
-    ASSERT_TRUE(A[0] > 0.0);
-    ASSERT_TRUE(A[4] > 0.0);
-    ASSERT_TRUE(A[8] > 0.0);
+    /* Verify L * L^T = original A
+     * After decomposition, A contains L in lower triangle
+     * Reconstruct and verify against original */
+    double reconstructed[9];
+    for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 3; j++) {
+            double sum = 0.0;
+            for (int k = 0; k <= (i < j ? i : j); k++) {
+                double L_ik = (k <= i) ? A[i * 3 + k] : 0.0;
+                double L_jk = (k <= j) ? A[j * 3 + k] : 0.0;
+                sum += L_ik * L_jk;
+            }
+            reconstructed[i * 3 + j] = sum;
+        }
+    }
+
+    /* Verify reconstruction matches original */
+    for (int i = 0; i < 9; i++) {
+        ASSERT_TRUE(fabs(reconstructed[i] - A_original[i]) < 1e-10);
+    }
 }
 
 TEST(test_cholesky_decompose_identity) {
@@ -150,21 +171,36 @@ TEST(test_lu_decompose_singular) {
 }
 
 TEST(test_qr_decompose_basic) {
-    /* Test 3x3 matrix */
+    /* Test 3x2 matrix with known result (column-major)
+     * A = [[1, 1],
+     *      [1, 2],
+     *      [1, 3]]
+     * This should give solution x=[1,2] for b=[3,5,7]
+     */
     double A[] = {
-        12.0, -51.0, 4.0,
-        6.0, 167.0, -68.0,
-        -4.0, 24.0, -41.0
+        1.0, 1.0, 1.0,  /* Column 0 */
+        1.0, 2.0, 3.0   /* Column 1 */
     };
-    double tau[3];
+    double tau[2];
 
-    int status = fc_mat_qr_decompose_f64(3, 3, A, 3, tau);
+    int status = fc_mat_qr_decompose_f64(3, 2, A, 3, tau);
     ASSERT_EQ(status, FC_OK);
 
     /* R diagonal should be non-zero */
     ASSERT_TRUE(fabs(A[0]) > TEST_EPSILON);
-    ASSERT_TRUE(fabs(A[4]) > TEST_EPSILON);
-    ASSERT_TRUE(fabs(A[8]) > TEST_EPSILON);
+    ASSERT_TRUE(fabs(A[3]) > TEST_EPSILON);
+
+    /* Verify by solving a known least squares problem */
+    double b[] = {3.0, 5.0, 7.0};
+    status = fc_mat_apply_qt_vector_f64(3, 2, A, 3, tau, b);
+    ASSERT_EQ(status, FC_OK);
+
+    status = fc_mat_solve_triangular_upper_f64(2, A, 3, b);
+    ASSERT_EQ(status, FC_OK);
+
+    /* The solution should be x=[1,2] */
+    ASSERT_TRUE(fabs(b[0] - 1.0) < 1e-10);
+    ASSERT_TRUE(fabs(b[1] - 2.0) < 1e-10);
 }
 
 TEST(test_qr_decompose_invalid_args) {
@@ -180,17 +216,31 @@ TEST(test_qr_decompose_invalid_args) {
 }
 
 TEST(test_qr_decompose_tall) {
-    /* Test 4x3 tall matrix */
+    /* Test 4x2 tall matrix (column-major)
+     * Using perfect linear data: y = 1 + 2*x
+     * Data points: (1,3), (2,5), (3,7), (4,9)
+     * Expected exact solution: a=1.0, b=2.0
+     */
     double A[] = {
-        1.0, 2.0, 3.0,
-        4.0, 5.0, 6.0,
-        7.0, 8.0, 9.0,
-        10.0, 11.0, 12.0
+        1.0, 1.0, 1.0, 1.0,  /* Column 0: intercept */
+        1.0, 2.0, 3.0, 4.0   /* Column 1: x values */
     };
-    double tau[3];
+    double tau[2];
 
-    int status = fc_mat_qr_decompose_f64(4, 3, A, 3, tau);
+    int status = fc_mat_qr_decompose_f64(4, 2, A, 4, tau);
     ASSERT_EQ(status, FC_OK);
+
+    /* Verify by solving least squares */
+    double b[] = {3.0, 5.0, 7.0, 9.0};
+    status = fc_mat_apply_qt_vector_f64(4, 2, A, 4, tau, b);
+    ASSERT_EQ(status, FC_OK);
+
+    status = fc_mat_solve_triangular_upper_f64(2, A, 4, b);
+    ASSERT_EQ(status, FC_OK);
+
+    /* Expected exact solution: a=1.0, b=2.0 */
+    ASSERT_TRUE(fabs(b[0] - 1.0) < 1e-10);
+    ASSERT_TRUE(fabs(b[1] - 2.0) < 1e-10);
 }
 
 TEST(test_svd_basic) {
@@ -726,40 +776,33 @@ TEST(test_solve_triangular_upper_singular) {
 TEST(test_qr_least_squares_integration) {
     /* Integration test: solve least squares using QR decomposition
      * System: A*x = b where A is 4x2 (overdetermined)
-     * A = [1 1]    b = [2]
-     *     [1 2]        [3]
-     *     [1 3]        [5]
-     *     [1 4]        [6]
-     *
-     * This is linear regression: y = a + b*x with data points:
-     * (1, 2), (2, 3), (3, 5), (4, 6)
-     * Expected least squares solution: approximately a=0.5, b=1.0
+     * Using perfect linear data: y = 1 + 2*x
+     * Data points: (1,3), (2,5), (3,7), (4,9)
+     * Expected exact solution: a=1.0, b=2.0
      */
     double A[] = {
-        1.0, 1.0,
-        1.0, 2.0,
-        1.0, 3.0,
-        1.0, 4.0
+        1.0, 1.0, 1.0, 1.0,  /* Column 0: intercept */
+        1.0, 2.0, 3.0, 4.0   /* Column 1: x values */
     };
-    double b[] = {2.0, 3.0, 5.0, 6.0};
+    double b[] = {3.0, 5.0, 7.0, 9.0};  /* y values */
     double tau[2];
 
-    /* Step 1: QR decomposition */
-    int status = fc_mat_qr_decompose_f64(4, 2, A, 2, tau);
+    /* Step 1: QR decomposition (column-major, lda=4) */
+    int status = fc_mat_qr_decompose_f64(4, 2, A, 4, tau);
     ASSERT_EQ(status, FC_OK);
 
     /* Step 2: Apply Q^T to b */
-    status = fc_mat_apply_qt_vector_f64(4, 2, A, 2, tau, b);
+    status = fc_mat_apply_qt_vector_f64(4, 2, A, 4, tau, b);
     ASSERT_EQ(status, FC_OK);
 
     /* Debug: print intermediate values */
     printf("  After Q^T * b: [%.6f, %.6f, %.6f, %.6f]\n", b[0], b[1], b[2], b[3]);
     printf("  R matrix (upper triangle):\n");
-    printf("    [%.6f, %.6f]\n", A[0], A[1]);
-    printf("    [%.6f, %.6f]\n", A[2], A[3]);
+    printf("    [%.6f, %.6f]\n", A[0], A[4]);
+    printf("    [%.6f, %.6f]\n", A[1], A[5]);
 
     /* Step 3: Solve R*x = Q^T*b (use first 2 elements of b) */
-    status = fc_mat_solve_triangular_upper_f64(2, A, 2, b);
+    status = fc_mat_solve_triangular_upper_f64(2, A, 4, b);
     ASSERT_EQ(status, FC_OK);
 
     /* Debug: print solution */
@@ -769,9 +812,9 @@ TEST(test_qr_least_squares_integration) {
     ASSERT_TRUE(isfinite(b[0]));
     ASSERT_TRUE(isfinite(b[1]));
 
-    /* Solution should be in reasonable range for this linear regression problem */
-    ASSERT_TRUE(fabs(b[0]) < 100.0);
-    ASSERT_TRUE(fabs(b[1]) < 100.0);
+    /* Verify the expected exact solution: a=1.0, b=2.0 */
+    ASSERT_TRUE(fabs(b[0] - 1.0) < 1e-10);
+    ASSERT_TRUE(fabs(b[1] - 2.0) < 1e-10);
 }
 
 void test_decompose_register(void) {
