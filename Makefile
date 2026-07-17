@@ -231,24 +231,23 @@ clean:
 	@go clean -cache
 
 sync:
-	@echo "==> Syncing submodules recursively (partial clone: build + include only)"
-	@echo "==> Downloading to modules/ directory (flat structure)"
-	@mkdir -p modules
+	@echo "==> Syncing submodules recursively"
+	@echo "==> third_party/ modules: full clone"
+	@echo "==> other modules: sparse clone (build + include)"
 	@bash -c 'set -e; \
 	clone_submodule() { \
 		local gitmodules_file=$$1; \
-		local base_path=$$2; \
 		git config -f $$gitmodules_file --get-regexp "^submodule\..*\.path$$" | while read key path; do \
 			submodule_name=$$(echo $$key | sed "s/^submodule\.\(.*\)\.path$$/\1/"); \
 			url=$$(git config -f $$gitmodules_file --get "submodule.$$submodule_name.url"); \
 			module_name=$$(basename $$url .git); \
-			cache_path="modules/$$module_name"; \
 			branch=$$(git config -f $$gitmodules_file --get "submodule.$$submodule_name.branch" 2>/dev/null || echo "main"); \
 			need_recurse=false; \
+			is_third_party=$$(echo "$$path" | grep -q "^third_party/" && echo "true" || echo "false"); \
 			\
-			if [ -d "$$cache_path/.git" ]; then \
+			if [ -d "$$path/.git" ]; then \
 				echo "  ↻ Checking $$module_name for updates"; \
-				cd $$cache_path; \
+				cd $$path; \
 				current_commit=$$(git rev-parse HEAD 2>/dev/null || echo "none"); \
 				git fetch --depth=1 origin $$branch 2>/dev/null || git fetch --depth=1 origin main 2>/dev/null || git fetch --depth=1 origin master 2>/dev/null; \
 				latest_commit=$$(git rev-parse FETCH_HEAD 2>/dev/null); \
@@ -258,32 +257,44 @@ sync:
 					need_recurse=true; \
 				else \
 					echo "    ✓ $$module_name is up to date"; \
+					cd - > /dev/null; \
+					continue; \
 				fi; \
 				cd - > /dev/null; \
 			else \
-				echo "  ⬇ Cloning $$module_name to modules/ (sparse: build + include)"; \
-				rm -rf $$cache_path; \
-				mkdir -p $$cache_path; \
-				cd $$cache_path && \
-				git init && \
-				git remote add origin $$url && \
-				git config core.sparseCheckout true && \
-				git sparse-checkout init --no-cone && \
-				git sparse-checkout set "build/*" "include/*" ".gitmodules" && \
-				git fetch --depth=1 origin && \
-				git checkout $$branch 2>/dev/null || git checkout main 2>/dev/null || git checkout master; \
-				cd - > /dev/null; \
-				need_recurse=true; \
+				if [ "$$is_third_party" = "true" ]; then \
+					echo "  ⬇ Cloning $$module_name to $$path (full clone)"; \
+					rm -rf $$path; \
+					mkdir -p $$(dirname $$path); \
+					git clone --depth=1 --branch $$branch $$url $$path 2>/dev/null || \
+					git clone --depth=1 --branch main $$url $$path 2>/dev/null || \
+					git clone --depth=1 --branch master $$url $$path; \
+					need_recurse=true; \
+				else \
+					echo "  ⬇ Cloning $$module_name to $$path (sparse: build + include)"; \
+					rm -rf $$path; \
+					mkdir -p $$path; \
+					cd $$path && \
+					git init && \
+					git remote add origin $$url && \
+					git config core.sparseCheckout true && \
+					git sparse-checkout init --no-cone && \
+					git sparse-checkout set "build/*" "include/*" ".gitmodules" && \
+					git fetch --depth=1 origin && \
+					git checkout $$branch 2>/dev/null || git checkout main 2>/dev/null || git checkout master; \
+					cd - > /dev/null; \
+					need_recurse=true; \
+				fi; \
 			fi; \
 			\
-			if [ "$$need_recurse" = "true" ] && [ -f "$$cache_path/.gitmodules" ]; then \
+			if [ "$$need_recurse" = "true" ] && [ -f "$$path/.gitmodules" ]; then \
 				echo "    Found nested submodules in $$module_name"; \
-				clone_submodule "$$cache_path/.gitmodules" ""; \
+				clone_submodule "$$path/.gitmodules"; \
 			fi; \
 		done; \
 	}; \
-	clone_submodule ".gitmodules" ""'
-	@echo "==> Submodules synced successfully (build + include only, recursive)"
+	clone_submodule ".gitmodules"'
+	@echo "==> Submodules synced successfully"
 
 help:
 	@echo "codec Makefile - Build and Test Targets"
