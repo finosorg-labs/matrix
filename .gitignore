@@ -6,6 +6,7 @@ build/**
 !build/**/*.dylib
 !build/**/*.lib
 !build/**/*.dll
+build/**/third_party/**
 build-*/
 install/
 

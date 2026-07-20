@@ -9,11 +9,12 @@ package matrix
 /*
 #cgo CFLAGS: -I${SRCDIR}/include
 #cgo CFLAGS: -I${SRCDIR}/modules/platform/include
-#cgo linux,amd64   LDFLAGS: -L${SRCDIR}/modules/platform/build/linux_amd64 -lfinkit_platform_static -lm
-#cgo linux,arm64   LDFLAGS: -L${SRCDIR}/modules/platform/build/linux_arm64 -lfinkit_platform_static -lm
-#cgo darwin,amd64  LDFLAGS: -L${SRCDIR}/modules/platform/build/darwin_amd64 -lfinkit_platform_static -lm
-#cgo darwin,arm64  LDFLAGS: -L${SRCDIR}/modules/platform/build/darwin_arm64 -lfinkit_platform_static -lm
-#cgo windows,amd64 LDFLAGS: -L${SRCDIR}/modules/platform/build/windows_amd64 -lfinkit_platform_static -lm
+#cgo CFLAGS: -I${SRCDIR}/third_party/OpenBLAS
+#cgo linux,amd64   LDFLAGS: -L${SRCDIR}/modules/platform/build/linux_amd64 -lfinkit_platform_static -L${SRCDIR}/build/linux_amd64/third_party -lopenblas -lm -lgfortran -lpthread
+#cgo linux,arm64   LDFLAGS: -L${SRCDIR}/modules/platform/build/linux_arm64 -lfinkit_platform_static -L${SRCDIR}/build/linux_arm64/third_party -lopenblas -lm -lgfortran -lpthread
+#cgo darwin,amd64  LDFLAGS: -L${SRCDIR}/modules/platform/build/darwin_amd64 -lfinkit_platform_static -L${SRCDIR}/build/darwin_amd64/third_party -lopenblas -lm -lgfortran -lpthread
+#cgo darwin,arm64  LDFLAGS: -L${SRCDIR}/modules/platform/build/darwin_arm64 -lfinkit_platform_static -L${SRCDIR}/build/darwin_arm64/third_party -lopenblas -lm -lgfortran -lpthread
+#cgo windows,amd64 LDFLAGS: -L${SRCDIR}/modules/platform/build/windows_amd64 -lfinkit_platform_static -L${SRCDIR}/build/windows_amd64/third_party -lopenblas -lm -lgfortran -lpthread
 
 
 #include "matrix.h"

@@ -162,7 +162,7 @@ TEST(test_gemm_avx2_both_remainder) {
     double C[9] = {0.0};
     double C_ref[9] = {0.0};
 
-    int status = fc_mat_gemm_f64_avx2(3, 3, 5, 1.0, A, 5, B, 3, 0.0, C, 3);
+    int status = fc_mat_gemm_f64(3, 3, 5, 1.0, A, 5, B, 3, 0.0, C, 3);
     ASSERT_EQ(status, FC_OK);
 
     /* Compute reference and verify */
@@ -182,7 +182,7 @@ TEST(test_gemm_avx2_direct) {
                     0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0};
     double C[32] = {0.0};
 
-    int status = fc_mat_gemm_f64_avx2(4, 8, 4, 1.0, A, 4, B, 8, 0.0, C, 8);
+    int status = fc_mat_gemm_f64(4, 8, 4, 1.0, A, 4, B, 8, 0.0, C, 8);
     ASSERT_EQ(status, FC_OK);
 
     ASSERT_TRUE(double_equals(C[0], 1.0, TEST_EPSILON));
@@ -203,7 +203,7 @@ TEST(test_gemm_avx2_m_remainder) {
     double C[16] = {0.0};
     double C_ref[16] = {0.0};
 
-    int status = fc_mat_gemm_f64_avx2(2, 8, 5, 1.0, A, 5, B, 8, 0.0, C, 8);
+    int status = fc_mat_gemm_f64(2, 8, 5, 1.0, A, 5, B, 8, 0.0, C, 8);
     ASSERT_EQ(status, FC_OK);
 
     gemm_reference(2, 8, 5, 1.0, A, 5, B, 8, 0.0, C_ref, 8);
@@ -222,7 +222,7 @@ TEST(test_gemm_avx2_n_remainder) {
     double C[15] = {0.0};
     double C_ref[15] = {0.0};
 
-    int status = fc_mat_gemm_f64_avx2(3, 5, 4, 1.0, A, 4, B, 5, 0.0, C, 5);
+    int status = fc_mat_gemm_f64(3, 5, 4, 1.0, A, 4, B, 5, 0.0, C, 5);
     ASSERT_EQ(status, FC_OK);
 
     gemm_reference(3, 5, 4, 1.0, A, 4, B, 5, 0.0, C_ref, 5);
@@ -247,7 +247,7 @@ TEST(test_gemm_avx2_n_remainder_beta) {
                         1.0, 1.0, 1.0, 1.0, 1.0,
                         1.0, 1.0, 1.0, 1.0, 1.0};
 
-    int status = fc_mat_gemm_f64_avx2(3, 5, 4, 1.0, A, 4, B, 5, 0.5, C, 5);
+    int status = fc_mat_gemm_f64(3, 5, 4, 1.0, A, 4, B, 5, 0.5, C, 5);
     ASSERT_EQ(status, FC_OK);
 
     gemm_reference(3, 5, 4, 1.0, A, 4, B, 5, 0.5, C_ref, 5);
@@ -265,7 +265,7 @@ TEST(test_gemm_avx2_with_beta) {
     double C_ref[16] = {1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
                         2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0};
 
-    int status = fc_mat_gemm_f64_avx2(2, 8, 2, 2.0, A, 2, B, 8, 3.0, C, 8);
+    int status = fc_mat_gemm_f64(2, 8, 2, 2.0, A, 2, B, 8, 3.0, C, 8);
     ASSERT_EQ(status, FC_OK);
 
     gemm_reference(2, 8, 2, 2.0, A, 2, B, 8, 3.0, C_ref, 8);
@@ -281,7 +281,7 @@ TEST(test_gemm_avx2_with_beta_1) {
     for (int i = 0; i < k * n; i++) B[i] = 1.0;
     for (int i = 0; i < m * n; i++) C[i] = 2.0;
 
-    int status = fc_mat_gemm_f64_avx2(m, n, k, 1.0, A, k, B, n, 1.0, C, n);
+    int status = fc_mat_gemm_f64(m, n, k, 1.0, A, k, B, n, 1.0, C, n);
     ASSERT_EQ(status, FC_OK);
 
     /* C = 1.0 * A*B + 1.0 * C_old = k + 2 = 6 */
@@ -299,7 +299,7 @@ TEST(test_gemm_avx2_with_beta_4x8) {
     for (int i = 0; i < k * n; i++) B[i] = 1.0;
     for (int i = 0; i < m * n; i++) C[i] = 2.0;
 
-    int status = fc_mat_gemm_f64_avx2(m, n, k, 1.0, A, k, B, n, 0.5, C, n);
+    int status = fc_mat_gemm_f64(m, n, k, 1.0, A, k, B, n, 0.5, C, n);
     ASSERT_EQ(status, FC_OK);
 
     /* C = 1.0 * A*B + 0.5 * C_old = k + 0.5*2 = 5 */
@@ -321,7 +321,7 @@ TEST(test_gemm_avx512_both_remainder) {
     for (int i = 0; i < k * n; i++) B[i] = 1.0;
     for (int i = 0; i < m * n; i++) C[i] = 0.0;
 
-    int status = fc_mat_gemm_f64_avx512(m, n, k, 1.0, A, k, B, n, 0.0, C, n);
+    int status = fc_mat_gemm_f64(m, n, k, 1.0, A, k, B, n, 0.0, C, n);
     ASSERT_EQ(status, FC_OK);
 
     for (int i = 0; i < m * n; i++) {
@@ -344,7 +344,7 @@ TEST(test_gemm_avx512_direct) {
     for (int i = 0; i < k * n; i++) B[i] = 1.0;
     for (int i = 0; i < m * n; i++) C[i] = 0.0;
 
-    int status = fc_mat_gemm_f64_avx512(m, n, k, 1.0, A, k, B, n, 0.0, C, n);
+    int status = fc_mat_gemm_f64(m, n, k, 1.0, A, k, B, n, 0.0, C, n);
     ASSERT_EQ(status, FC_OK);
 
     for (int i = 0; i < m * n; i++) {
@@ -365,7 +365,7 @@ TEST(test_gemm_avx512_m_remainder) {
     for (int i = 0; i < k * n; i++) B[i] = 1.0;
     for (int i = 0; i < m * n; i++) C[i] = 0.0;
 
-    int status = fc_mat_gemm_f64_avx512(m, n, k, 1.0, A, k, B, n, 0.0, C, n);
+    int status = fc_mat_gemm_f64(m, n, k, 1.0, A, k, B, n, 0.0, C, n);
     ASSERT_EQ(status, FC_OK);
 
     for (int i = 0; i < m * n; i++) {
@@ -386,7 +386,7 @@ TEST(test_gemm_avx512_n_remainder) {
     for (int i = 0; i < k * n; i++) B[i] = 1.0;
     for (int i = 0; i < m * n; i++) C[i] = 0.0;
 
-    int status = fc_mat_gemm_f64_avx512(m, n, k, 1.0, A, k, B, n, 0.0, C, n);
+    int status = fc_mat_gemm_f64(m, n, k, 1.0, A, k, B, n, 0.0, C, n);
     ASSERT_EQ(status, FC_OK);
 
     for (int i = 0; i < m * n; i++) {
@@ -407,7 +407,7 @@ TEST(test_gemm_avx512_with_beta) {
     for (int i = 0; i < k * n; i++) B[i] = 1.0;
     for (int i = 0; i < m * n; i++) C[i] = 2.0;
 
-    int status = fc_mat_gemm_f64_avx512(m, n, k, 1.0, A, k, B, n, 2.0, C, n);
+    int status = fc_mat_gemm_f64(m, n, k, 1.0, A, k, B, n, 2.0, C, n);
     ASSERT_EQ(status, FC_OK);
 
     /* C = 1.0 * A*B + 2.0 * C_old = k + 2*2 = 8 */
@@ -722,7 +722,7 @@ TEST(test_gemm_scalar_10x8_beta) {
     for (int i = 0; i < 80; i++) C[i] = 1.0;
     for (int i = 0; i < 80; i++) C_ref[i] = 1.0;
 
-    int status = fc_mat_gemm_f64_scalar(10, 8, 8, 1.0, A, 8, B, 8, 0.5, C, 8);
+    int status = fc_mat_gemm_f64(10, 8, 8, 1.0, A, 8, B, 8, 0.5, C, 8);
     ASSERT_EQ(status, FC_OK);
 
     gemm_reference(10, 8, 8, 1.0, A, 8, B, 8, 0.5, C_ref, 8);
@@ -741,7 +741,7 @@ TEST(test_gemm_scalar_16x10_k16) {
     for (int i = 0; i < 160; i++) C[i] = 0.0;
     for (int i = 0; i < 160; i++) C_ref[i] = 0.0;
 
-    int status = fc_mat_gemm_f64_scalar(16, 10, 16, 1.0, A, 16, B, 10, 0.0, C, 10);
+    int status = fc_mat_gemm_f64(16, 10, 16, 1.0, A, 16, B, 10, 0.0, C, 10);
     ASSERT_EQ(status, FC_OK);
 
     gemm_reference(16, 10, 16, 1.0, A, 16, B, 10, 0.0, C_ref, 10);
@@ -760,7 +760,7 @@ TEST(test_gemm_scalar_8x10_k16) {
     for (int i = 0; i < 80; i++) C[i] = 0.0;
     for (int i = 0; i < 80; i++) C_ref[i] = 0.0;
 
-    int status = fc_mat_gemm_f64_scalar(8, 10, 16, 1.0, A, 16, B, 10, 0.0, C, 10);
+    int status = fc_mat_gemm_f64(8, 10, 16, 1.0, A, 16, B, 10, 0.0, C, 10);
     ASSERT_EQ(status, FC_OK);
 
     gemm_reference(8, 10, 16, 1.0, A, 16, B, 10, 0.0, C_ref, 10);
@@ -779,7 +779,7 @@ TEST(test_gemm_scalar_8x8_beta_k16) {
     for (int i = 0; i < 64; i++) C[i] = 2.0;
     for (int i = 0; i < 64; i++) C_ref[i] = 2.0;
 
-    int status = fc_mat_gemm_f64_scalar(8, 8, 16, 1.0, A, 16, B, 8, 0.5, C, 8);
+    int status = fc_mat_gemm_f64(8, 8, 16, 1.0, A, 16, B, 8, 0.5, C, 8);
     ASSERT_EQ(status, FC_OK);
 
     gemm_reference(8, 8, 16, 1.0, A, 16, B, 8, 0.5, C_ref, 8);
@@ -792,7 +792,7 @@ TEST(test_gemm_scalar_direct) {
     double B[4] = {5.0, 6.0, 7.0, 8.0};
     double C[4] = {0.0, 0.0, 0.0, 0.0};
 
-    int status = fc_mat_gemm_f64_scalar(2, 2, 2, 1.0, A, 2, B, 2, 0.0, C, 2);
+    int status = fc_mat_gemm_f64(2, 2, 2, 1.0, A, 2, B, 2, 0.0, C, 2);
     ASSERT_EQ(status, FC_OK);
 
     /* Expected: C = A * B
@@ -815,7 +815,7 @@ TEST(test_gemm_scalar_edge_cases) {
     double C[12] = {0};
     double C_ref[12] = {0};
 
-    int status = fc_mat_gemm_f64_scalar(3, 4, 5, 1.0, A, 5, B, 7, 0.0, C, 4);
+    int status = fc_mat_gemm_f64(3, 4, 5, 1.0, A, 5, B, 7, 0.0, C, 4);
     ASSERT_EQ(status, FC_OK);
 
     gemm_reference(3, 4, 5, 1.0, A, 5, B, 7, 0.0, C_ref, 4);
@@ -833,7 +833,7 @@ TEST(test_gemm_scalar_large_4x4) {
         C[i] = 0.0;
     }
 
-    int status = fc_mat_gemm_f64_scalar(8, 8, 8, 1.0, A, 8, B, 8, 0.0, C, 8);
+    int status = fc_mat_gemm_f64(8, 8, 8, 1.0, A, 8, B, 8, 0.0, C, 8);
     ASSERT_EQ(status, FC_OK);
 
     /* C[0,0] = sum(A[0,:]) = 1+2+3+4+5+6+7+8 = 36 */
@@ -856,7 +856,7 @@ TEST(test_gemm_scalar_m_remainder_beta) {
                         1.0, 1.0, 1.0, 1.0,
                         1.0, 1.0, 1.0, 1.0};
 
-    int status = fc_mat_gemm_f64_scalar(3, 4, 4, 1.0, A, 4, B, 4, 0.5, C, 4);
+    int status = fc_mat_gemm_f64(3, 4, 4, 1.0, A, 4, B, 4, 0.5, C, 4);
     ASSERT_EQ(status, FC_OK);
 
     gemm_reference(3, 4, 4, 1.0, A, 4, B, 4, 0.5, C_ref, 4);
@@ -876,7 +876,7 @@ TEST(test_gemm_scalar_n_remainder) {
     double C[20] = {0.0};
     double C_ref[20] = {0.0};
 
-    int status = fc_mat_gemm_f64_scalar(4, 5, 4, 1.0, A, 4, B, 5, 0.0, C, 5);
+    int status = fc_mat_gemm_f64(4, 5, 4, 1.0, A, 4, B, 5, 0.0, C, 5);
     ASSERT_EQ(status, FC_OK);
 
     gemm_reference(4, 5, 4, 1.0, A, 4, B, 5, 0.0, C_ref, 5);
@@ -902,7 +902,7 @@ TEST(test_gemm_scalar_n_remainder_beta) {
                         1.0, 1.0, 1.0, 1.0, 1.0,
                         1.0, 1.0, 1.0, 1.0, 1.0};
 
-    int status = fc_mat_gemm_f64_scalar(4, 5, 4, 1.0, A, 4, B, 5, 0.5, C, 5);
+    int status = fc_mat_gemm_f64(4, 5, 4, 1.0, A, 4, B, 5, 0.5, C, 5);
     ASSERT_EQ(status, FC_OK);
 
     gemm_reference(4, 5, 4, 1.0, A, 4, B, 5, 0.5, C_ref, 5);
@@ -921,7 +921,7 @@ TEST(test_gemm_scalar_with_beta) {
     }
 
     /* C = 1.0 * A*B + 0.5 * C */
-    int status = fc_mat_gemm_f64_scalar(4, 4, 4, 1.0, A, 4, B, 4, 0.5, C, 4);
+    int status = fc_mat_gemm_f64(4, 4, 4, 1.0, A, 4, B, 4, 0.5, C, 4);
     ASSERT_EQ(status, FC_OK);
 
     gemm_reference(4, 4, 4, 1.0, A, 4, B, 4, 0.5, C_ref, 4);
@@ -941,7 +941,7 @@ TEST(test_gemm_sse42_both_remainder) {
     double C[9] = {0.0};
     double C_ref[9] = {0.0};
 
-    int status = fc_mat_gemm_f64_sse42(3, 3, 5, 1.0, A, 5, B, 3, 0.0, C, 3);
+    int status = fc_mat_gemm_f64(3, 3, 5, 1.0, A, 5, B, 3, 0.0, C, 3);
     ASSERT_EQ(status, FC_OK);
 
     gemm_reference(3, 3, 5, 1.0, A, 5, B, 3, 0.0, C_ref, 3);
@@ -954,7 +954,7 @@ TEST(test_gemm_sse42_direct) {
     double B[4] = {5.0, 6.0, 7.0, 8.0};
     double C[4] = {0.0, 0.0, 0.0, 0.0};
 
-    int status = fc_mat_gemm_f64_sse42(2, 2, 2, 1.0, A, 2, B, 2, 0.0, C, 2);
+    int status = fc_mat_gemm_f64(2, 2, 2, 1.0, A, 2, B, 2, 0.0, C, 2);
 
     /* SSE4.2 might not be available on all platforms */
     if (status == FC_OK) {
@@ -974,7 +974,7 @@ TEST(test_gemm_sse42_k16) {
     for (int i = 0; i < k * n; i++) B[i] = 1.0;
     for (int i = 0; i < m * n; i++) C[i] = 0.0;
 
-    int status = fc_mat_gemm_f64_sse42(m, n, k, 1.0, A, k, B, n, 0.0, C, n);
+    int status = fc_mat_gemm_f64(m, n, k, 1.0, A, k, B, n, 0.0, C, n);
     ASSERT_EQ(status, FC_OK);
     ASSERT_TRUE(double_equals(C[0], (double)k, TEST_EPSILON));
 }
@@ -993,7 +993,7 @@ TEST(test_gemm_sse42_m_remainder) {
     double C[20] = {0.0};
     double C_ref[20] = {0.0};
 
-    int status = fc_mat_gemm_f64_sse42(5, 4, 4, 1.0, A, 4, B, 4, 0.0, C, 4);
+    int status = fc_mat_gemm_f64(5, 4, 4, 1.0, A, 4, B, 4, 0.0, C, 4);
     ASSERT_EQ(status, FC_OK);
 
     gemm_reference(5, 4, 4, 1.0, A, 4, B, 4, 0.0, C_ref, 4);
@@ -1012,7 +1012,7 @@ TEST(test_gemm_sse42_n_remainder) {
     double C[15] = {0.0};
     double C_ref[15] = {0.0};
 
-    int status = fc_mat_gemm_f64_sse42(3, 5, 4, 1.0, A, 4, B, 5, 0.0, C, 5);
+    int status = fc_mat_gemm_f64(3, 5, 4, 1.0, A, 4, B, 5, 0.0, C, 5);
     ASSERT_EQ(status, FC_OK);
 
     gemm_reference(3, 5, 4, 1.0, A, 4, B, 5, 0.0, C_ref, 5);
@@ -1035,7 +1035,7 @@ TEST(test_gemm_sse42_n_remainder_beta) {
                         1.0, 1.0, 1.0, 1.0, 1.0,
                         1.0, 1.0, 1.0, 1.0, 1.0};
 
-    int status = fc_mat_gemm_f64_sse42(3, 5, 4, 1.0, A, 4, B, 5, 0.5, C, 5);
+    int status = fc_mat_gemm_f64(3, 5, 4, 1.0, A, 4, B, 5, 0.5, C, 5);
     ASSERT_EQ(status, FC_OK);
 
     gemm_reference(3, 5, 4, 1.0, A, 4, B, 5, 0.5, C_ref, 5);
@@ -1051,7 +1051,7 @@ TEST(test_gemm_sse42_n_remainder_m4) {
     for (int i = 0; i < k * n; i++) B[i] = 1.0;
     for (int i = 0; i < m * n; i++) C[i] = 0.0;
 
-    int status = fc_mat_gemm_f64_sse42(m, n, k, 1.0, A, k, B, n, 0.0, C, n);
+    int status = fc_mat_gemm_f64(m, n, k, 1.0, A, k, B, n, 0.0, C, n);
     ASSERT_EQ(status, FC_OK);
 
     for (int i = 0; i < m * n; i++) {
@@ -1077,7 +1077,7 @@ TEST(test_gemm_sse42_with_beta) {
                         1.0, 1.0, 1.0, 1.0,
                         1.0, 1.0, 1.0, 1.0};
 
-    int status = fc_mat_gemm_f64_sse42(4, 4, 4, 1.0, A, 4, B, 4, 0.5, C, 4);
+    int status = fc_mat_gemm_f64(4, 4, 4, 1.0, A, 4, B, 4, 0.5, C, 4);
     ASSERT_EQ(status, FC_OK);
 
     gemm_reference(4, 4, 4, 1.0, A, 4, B, 4, 0.5, C_ref, 4);

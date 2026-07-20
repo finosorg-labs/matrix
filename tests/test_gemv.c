@@ -94,7 +94,7 @@ TEST(test_gemv_avx2_direct) {
 
     for (int i = 0; i < 24; i++) A[i] = 1.0;
 
-    fc_mat_gemv_f64_avx2(m, n, 1.0, A, n, x, 0.0, y);
+    fc_mat_gemv_f64(m, n, 1.0, A, n, x, 0.0, y);
 
     ASSERT_TRUE(double_equals(y[0], 8.0, TEST_EPSILON));
     ASSERT_TRUE(double_equals(y[1], 8.0, TEST_EPSILON));
@@ -356,7 +356,7 @@ TEST(test_gemv_scalar_direct) {
     double x[4] = {1.0, 1.0, 1.0, 1.0};
     double y[3] = {0.0, 0.0, 0.0};
 
-    fc_mat_gemv_f64_scalar(m, n, 1.0, A, n, x, 0.0, y);
+    fc_mat_gemv_f64(m, n, 1.0, A, n, x, 0.0, y);
 
     ASSERT_TRUE(double_equals(y[0], 10.0, TEST_EPSILON));
     ASSERT_TRUE(double_equals(y[1], 26.0, TEST_EPSILON));
@@ -370,7 +370,7 @@ TEST(test_gemv_scalar_with_beta) {
     double x[3] = {1.0, 1.0, 1.0};
     double y[2] = {10.0, 20.0};
 
-    fc_mat_gemv_f64_scalar(m, n, 2.0, A, n, x, 3.0, y);
+    fc_mat_gemv_f64(m, n, 2.0, A, n, x, 3.0, y);
 
     /* y = 2.0 * (6.0) + 3.0 * 10.0 = 42.0 */
     ASSERT_TRUE(double_equals(y[0], 42.0, TEST_EPSILON));
@@ -414,7 +414,7 @@ TEST(test_gemv_sse42_direct) {
     double x[4] = {1.0, 1.0, 1.0, 1.0};
     double y[3] = {0.0, 0.0, 0.0};
 
-    fc_mat_gemv_f64_sse42(m, n, 1.0, A, n, x, 0.0, y);
+    fc_mat_gemv_f64(m, n, 1.0, A, n, x, 0.0, y);
 
     ASSERT_TRUE(double_equals(y[0], 10.0, TEST_EPSILON));
     ASSERT_TRUE(double_equals(y[1], 26.0, TEST_EPSILON));
@@ -428,7 +428,7 @@ TEST(test_gemv_sse42_odd_n) {
     double x[3] = {1.0, 1.0, 1.0};
     double y[2] = {0.0, 0.0};
 
-    fc_mat_gemv_f64_sse42(m, n, 1.0, A, n, x, 0.0, y);
+    fc_mat_gemv_f64(m, n, 1.0, A, n, x, 0.0, y);
 
     ASSERT_TRUE(double_equals(y[0], 6.0, TEST_EPSILON));
     ASSERT_TRUE(double_equals(y[1], 15.0, TEST_EPSILON));
@@ -441,7 +441,7 @@ TEST(test_gemv_sse42_with_beta) {
     double x[4] = {1.0, 1.0, 1.0, 1.0};
     double y[2] = {5.0, 10.0};
 
-    fc_mat_gemv_f64_sse42(m, n, 1.0, A, n, x, 2.0, y);
+    fc_mat_gemv_f64(m, n, 1.0, A, n, x, 2.0, y);
 
     /* y = 1.0 * (10.0) + 2.0 * 5.0 = 20.0 */
     ASSERT_TRUE(double_equals(y[0], 20.0, TEST_EPSILON));

@@ -322,8 +322,8 @@ TEST(test_svd_rectangular) {
         3.0, 6.0, 9.0, 12.0    /* Column 3 */
     };
     double s[3];
-    double U[16];
-    double VT[9];
+    double U[12];  /* U is 4×3 */
+    double VT[9];  /* VT is 3×3 */
 
     int status = fc_mat_svd_f64(4, 3, A, 4, s, U, 4, VT, 3);
     ASSERT_EQ(status, FC_OK);
@@ -342,8 +342,8 @@ TEST(test_svd_wide_matrix) {
         4.0, 8.0, 12.0    /* Column 4 */
     };
     double s[3];
-    double U[9];
-    double VT[12];  /* VT should be 3x4 for thin SVD or 4x4 for full SVD */
+    double U[9];    /* U is 3×3 */
+    double VT[12];  /* VT is 3×4 */
 
     int status = fc_mat_svd_f64(3, 4, A, 3, s, U, 3, VT, 3);
     ASSERT_EQ(status, FC_OK);
@@ -360,11 +360,11 @@ TEST(test_svd_wide_matrix) {
 }
 
 TEST(test_svd_reconstruction) {
-    /* Test A = U*Σ*V^T reconstruction */
+    /* Test A = U*Σ*V^T reconstruction (column-major order) */
     double A[] = {
-        1.0, 2.0, 3.0,
-        4.0, 5.0, 6.0,
-        7.0, 8.0, 9.0
+        1.0, 4.0, 7.0,  /* Column 1 */
+        2.0, 5.0, 8.0,  /* Column 2 */
+        3.0, 6.0, 9.0   /* Column 3 */
     };
     double s[3];
     double U[9];
@@ -373,37 +373,36 @@ TEST(test_svd_reconstruction) {
     int status = fc_mat_svd_f64(3, 3, A, 3, s, U, 3, VT, 3);
     ASSERT_EQ(status, FC_OK);
 
-    /* Reconstruct A = U*Σ*V^T */
-    double Sigma[9] = {0};
-    Sigma[0] = s[0];
-    Sigma[4] = s[1];
-    Sigma[8] = s[2];
-
-    /* Compute U*Σ */
-    double US[9];
-    fc_mat_gemm_f64(3, 3, 3, 1.0, U, 3, Sigma, 3, 0.0, US, 3);
-
-    /* Compute (U*Σ)*V^T */
+    /* Reconstruct A = U*Σ*V^T (all matrices in column-major) */
+    /* Compute (U*Σ)*V^T manually for column-major matrices */
     double A_reconstructed[9];
-    fc_mat_gemm_f64(3, 3, 3, 1.0, US, 3, VT, 3, 0.0, A_reconstructed, 3);
+    for (int j = 0; j < 3; j++) {  /* for each column of result */
+        for (int i = 0; i < 3; i++) {  /* for each row of result */
+            double sum = 0.0;
+            for (int k = 0; k < 3; k++) {
+                sum += U[k * 3 + i] * s[k] * VT[j * 3 + k];  /* A = U * Σ * V^T */
+            }
+            A_reconstructed[j * 3 + i] = sum;
+        }
+    }
 
-    /* Debug output */
+    /* Debug output (print in row-major for readability) */
     printf("\n  Original A:\n");
     for (int i = 0; i < 3; i++) {
-        printf("    [%.6f, %.6f, %.6f]\n", A[i*3+0], A[i*3+1], A[i*3+2]);
+        printf("    [%.6f, %.6f, %.6f]\n", A[i+0*3], A[i+1*3], A[i+2*3]);
     }
     printf("  Singular values: [%.6f, %.6f, %.6f]\n", s[0], s[1], s[2]);
     printf("  Reconstructed A:\n");
     for (int i = 0; i < 3; i++) {
         printf("    [%.6f, %.6f, %.6f]\n",
-               A_reconstructed[i*3+0], A_reconstructed[i*3+1], A_reconstructed[i*3+2]);
+               A_reconstructed[i+0*3], A_reconstructed[i+1*3], A_reconstructed[i+2*3]);
     }
     printf("  Differences:\n");
     for (int i = 0; i < 3; i++) {
         printf("    [%.2e, %.2e, %.2e]\n",
-               fabs(A[i*3+0] - A_reconstructed[i*3+0]),
-               fabs(A[i*3+1] - A_reconstructed[i*3+1]),
-               fabs(A[i*3+2] - A_reconstructed[i*3+2]));
+               fabs(A[i+0*3] - A_reconstructed[i+0*3]),
+               fabs(A[i+1*3] - A_reconstructed[i+1*3]),
+               fabs(A[i+2*3] - A_reconstructed[i+2*3]));
     }
 
     /* Verify reconstruction */
@@ -413,11 +412,11 @@ TEST(test_svd_reconstruction) {
 }
 
 TEST(test_eig_sym_basic) {
-    /* Symmetric matrix */
+    /* Symmetric matrix (column-major) */
     double A[] = {
-        4.0, 1.0, 2.0,
-        1.0, 5.0, 3.0,
-        2.0, 3.0, 6.0
+        4.0, 1.0, 2.0,  /* Column 1 */
+        1.0, 5.0, 3.0,  /* Column 2 */
+        2.0, 3.0, 6.0   /* Column 3 */
     };
     double w[3];
     double Q[9];
@@ -431,11 +430,11 @@ TEST(test_eig_sym_basic) {
 }
 
 TEST(test_eig_sym_identity) {
-    /* Identity matrix - all eigenvalues should be 1 */
+    /* Identity matrix - all eigenvalues should be 1 (column-major) */
     double A[] = {
-        1.0, 0.0, 0.0,
-        0.0, 1.0, 0.0,
-        0.0, 0.0, 1.0
+        1.0, 0.0, 0.0,  /* Column 1 */
+        0.0, 1.0, 0.0,  /* Column 2 */
+        0.0, 0.0, 1.0   /* Column 3 */
     };
     double w[3];
     double Q[9];
@@ -449,11 +448,11 @@ TEST(test_eig_sym_identity) {
 }
 
 TEST(test_eig_sym_diagonal) {
-    /* Diagonal matrix - eigenvalues are diagonal elements */
+    /* Diagonal matrix - eigenvalues are diagonal elements (column-major) */
     double A[] = {
-        3.0, 0.0, 0.0,
-        0.0, 2.0, 0.0,
-        0.0, 0.0, 1.0
+        3.0, 0.0, 0.0,  /* Column 1 */
+        0.0, 2.0, 0.0,  /* Column 2 */
+        0.0, 0.0, 1.0   /* Column 3 */
     };
     double w[3];
     double Q[9];
@@ -515,9 +514,9 @@ TEST(test_eig_sym_orthogonality) {
 TEST(test_eig_sym_reconstruction) {
     /* Test A * v = lambda * v for each eigenpair */
     double A_orig[] = {
-        4.0, 1.0, 2.0,
-        1.0, 5.0, 3.0,
-        2.0, 3.0, 6.0
+        4.0, 1.0, 2.0,  /* Column 1 */
+        1.0, 5.0, 3.0,  /* Column 2 */
+        2.0, 3.0, 6.0   /* Column 3 (column-major) */
     };
     double A[] = {
         4.0, 1.0, 2.0,
@@ -530,11 +529,11 @@ TEST(test_eig_sym_reconstruction) {
     int status = fc_mat_eig_sym_f64(3, A, 3, w, Q, 3);
     ASSERT_EQ(status, FC_OK);
 
-    /* Debug: print eigenvalues and eigenvectors */
+    /* Debug: print eigenvalues and eigenvectors (print as rows for readability) */
     printf("\n  Eigenvalues: [%.6f, %.6f, %.6f]\n", w[0], w[1], w[2]);
     printf("  Q matrix:\n");
     for (int64_t i = 0; i < 3; i++) {
-        printf("    [%.6f, %.6f, %.6f]\n", Q[i*3+0], Q[i*3+1], Q[i*3+2]);
+        printf("    [%.6f, %.6f, %.6f]\n", Q[0*3+i], Q[1*3+i], Q[2*3+i]);
     }
 
     /* For each eigenvector, verify A * v = lambda * v */
@@ -542,16 +541,16 @@ TEST(test_eig_sym_reconstruction) {
         double v[3];
         double Av[3];
 
-        /* Extract eigenvector i */
+        /* Extract eigenvector i (column i of Q in column-major) */
         for (int64_t j = 0; j < 3; j++) {
-            v[j] = Q[j * 3 + i];
+            v[j] = Q[i * 3 + j];  /* Column-major: Q[j,i] = Q[i*3 + j] */
         }
 
-        /* Compute A * v */
+        /* Compute A * v (A_orig is column-major) */
         for (int64_t j = 0; j < 3; j++) {
             double sum = 0.0;
             for (int64_t k = 0; k < 3; k++) {
-                sum += A_orig[j * 3 + k] * v[k];
+                sum += A_orig[k * 3 + j] * v[k];  /* Column-major: A[j,k] = A[k*3 + j] */
             }
             Av[j] = sum;
         }
