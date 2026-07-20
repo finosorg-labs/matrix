@@ -58,7 +58,7 @@ COVERAGE_CONFIG := -G Ninja \
 .PHONY: all default linux windows go test bench clean verify help format
 .PHONY: qa qa-sanitizers qa-static
 .PHONY: sanitizer-asan sanitizer-usan sanitizer-tsan sanitizer-msan clang-tidy cppcheck
-.PHONY: sync
+.PHONY: sync build_third clean_third
 
 default: linux
 
@@ -72,6 +72,26 @@ qa-static: clang-tidy cppcheck
 
 qa-sanitizers: sanitizer-asan sanitizer-usan sanitizer-tsan sanitizer-msan
 	@echo "==> All sanitizer checks completed"
+
+build_third:
+	@echo "==> Building third-party libraries (OpenBLAS)"
+	@echo "==> Cleaning previous OpenBLAS build"
+	@cd third_party/OpenBLAS && $(MAKE) clean || true
+	@echo "==> Building OpenBLAS library (TARGET=HASWELL with DYNAMIC_ARCH and LAPACK)"
+	@cd third_party/OpenBLAS && $(MAKE) TARGET=HASWELL DYNAMIC_ARCH=1 NO_SHARED=1 USE_THREAD=1 NUM_THREADS=64 libs netlib -j$(shell nproc)
+
+
+copy_third:
+	@mkdir -p $(LINUX_BUILD_DIR)/third_party
+	@cp third_party/OpenBLAS/libopenblas.a $(LINUX_BUILD_DIR)/third_party/libopenblas.a
+	@echo "==> Third-party libraries built successfully: $(LINUX_BUILD_DIR)/third_party/libopenblas.a"
+
+
+clean_third:
+	@echo "==> Cleaning third-party build artifacts"
+	@cd third_party/OpenBLAS && $(MAKE) clean || true
+	@rm -f $(LINUX_BUILD_DIR)/third_party/libopenblas.a
+	@rm -f $(WINDOWS_BUILD_DIR)/third_party/libopenblas.a
 
 linux:
 	@echo "==> Building Linux (native, $(BUILD_TYPE))"
@@ -225,8 +245,11 @@ cppcheck:
 	@echo "==> cppcheck: No issues found"
 
 clean:
-	@echo "==> Cleaning build artifacts"
-	@rm -rf build/
+	@echo "==> Cleaning build artifacts (keeping third-party libraries)"
+	@if [ -d build ]; then \
+		find build -type f ! -path "*/third_party/*" -delete; \
+		find build -type d -empty -delete; \
+	fi
 	@echo "==> Cleaning Go cache"
 	@go clean -cache
 
@@ -297,14 +320,15 @@ sync:
 	@echo "==> Submodules synced successfully"
 
 help:
-	@echo "codec Makefile - Build and Test Targets"
+	@echo "matrix Makefile - Build and Test Targets"
 	@echo ""
 	@echo "Build Targets:"
-	@echo "  make           - build Linux native (default)"
-	@echo "  make linux     - build Linux native"
-	@echo "  make windows   - cross-compile Windows amd64"
-	@echo "  make all       - build Linux + Windows + Go"
-	@echo "  make go        - build Go module"
+	@echo "  make             - build Linux native (default)"
+	@echo "  make linux       - build Linux native"
+	@echo "  make windows     - cross-compile Windows amd64"
+	@echo "  make all         - build third-party + Linux + Windows + Go"
+	@echo "  make go          - build Go module"
+	@echo "  make build_third - build third-party libraries (OpenBLAS)"
 	@echo ""
 	@echo "Test Targets:"
 	@echo "  make test      - run Go tests"
@@ -318,8 +342,9 @@ help:
 	@echo "  make cppcheck      - run cppcheck analysis"
 	@echo ""
 	@echo "Utility Targets:"
-	@echo "  make format    - format C code"
-	@echo "  make verify    - verify artifact formats"
-	@echo "  make clean     - remove build artifacts"
-	@echo "  make sync      - sync all submodules"
-	@echo "  make help      - show this help"
+	@echo "  make format      - format C code"
+	@echo "  make verify      - verify artifact formats"
+	@echo "  make clean       - remove build artifacts"
+	@echo "  make clean_third - clean third-party build artifacts"
+	@echo "  make sync        - sync all submodules"
+	@echo "  make help        - show this help"

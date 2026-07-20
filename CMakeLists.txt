@@ -59,6 +59,28 @@ if(NOT TARGET finkit::platform)
     add_library(finkit::platform ALIAS finkit_platform_static)
 endif()
 
+# Determine matrix build directory (needed for OpenBLAS path detection)
+if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    if(CMAKE_SYSTEM_PROCESSOR MATCHES "arm64|aarch64")
+      set(MATRIX_BUILD_DIR "darwin_arm64")
+    else()
+        set(MATRIX_BUILD_DIR "darwin_x86_64")
+    endif()
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    set(MATRIX_BUILD_DIR "linux_amd64")
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    set(MATRIX_BUILD_DIR "windows_amd64")
+endif()
+
+# Try to find OpenBLAS library in build directory first, then fall back to source directory
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/build/${MATRIX_BUILD_DIR}/third_party/libopenblas.a)
+    set(FC_OPENBLAS_STATIC_LIB ${CMAKE_CURRENT_SOURCE_DIR}/build/${MATRIX_BUILD_DIR}/third_party/libopenblas.a)
+elseif(EXISTS ${CMAKE_BINARY_DIR}/third_party/libopenblas.a)
+    set(FC_OPENBLAS_STATIC_LIB ${CMAKE_BINARY_DIR}/third_party/libopenblas.a)
+else()
+    set(FC_OPENBLAS_STATIC_LIB ${CMAKE_CURRENT_SOURCE_DIR}/third_party/OpenBLAS/libopenblas.a)
+endif()
+
 
 # Matrix module sources
 set(MATRIX_SOURCES
@@ -79,6 +101,8 @@ target_include_directories(finkit_matrix
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/modules/platform/include>
         $<INSTALL_INTERFACE:include>
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/third_party/OpenBLAS
 )
 
 target_compile_definitions(finkit_matrix PRIVATE FC_STATIC_BUILD FC_ENABLE_INTERNAL_TESTS)
@@ -118,19 +142,6 @@ target_include_directories(finkit_matrix_static_base
         $<INSTALL_INTERFACE:include>
 )
 
-# Determine matrix build directory
-if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-    if(CMAKE_SYSTEM_PROCESSOR MATCHES "arm64|aarch64")
-      set(MATRIX_BUILD_DIR "darwin_arm64")
-    else()
-        set(MATRIX_BUILD_DIR "darwin_x86_64")
-    endif()
-elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    set(MATRIX_BUILD_DIR "linux_amd64")
-elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-    set(MATRIX_BUILD_DIR "windows_amd64")
-endif()
-
 # Merge static libraries into a single library
 set(MERGED_LIB_PATH ${CMAKE_CURRENT_SOURCE_DIR}/build/${MATRIX_BUILD_DIR}/libfinkit_matrix_static.a)
 set(PLATFORM_LIB_PATH "${PLATFORM_BUILD_DIR}/libfinkit_platform_static.a")
@@ -143,7 +154,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
      COMMAND lib.exe /OUT:${MERGED_LIB_PATH}
             $<TARGET_FILE:finkit_matrix_static_base>
             ${PLATFORM_LIB_PATH}
-        DEPENDS finkit_matrix_static_base ${PLATFORM_LIB_PATH}
+            ${FC_OPENBLAS_STATIC_LIB}
+        DEPENDS finkit_matrix_static_base ${PLATFORM_LIB_PATH} ${FC_OPENBLAS_STATIC_LIB}
         COMMENT "Merging static libraries into ${MERGED_LIB_PATH}"
         VERBATIM
     )
@@ -155,8 +167,9 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
         COMMAND libtool -static -o ${MERGED_LIB_PATH}
             $<TARGET_FILE:finkit_matrix_static_base>
             ${PLATFORM_LIB_PATH}
+            ${FC_OPENBLAS_STATIC_LIB}
             2>&1 | grep -v "warning duplicate member name" || true
-        DEPENDS finkit_matrix_static_base ${PLATFORM_LIB_PATH}
+        DEPENDS finkit_matrix_static_base ${PLATFORM_LIB_PATH} ${FC_OPENBLAS_STATIC_LIB}
       COMMENT "Merging static libraries into ${MERGED_LIB_PATH}"
         VERBATIM
     )
@@ -167,6 +180,7 @@ else()
 "CREATE ${MERGED_LIB_PATH}
 ADDLIB $<TARGET_FILE:finkit_matrix_static_base>
 ADDLIB ${PLATFORM_LIB_PATH}
+ADDLIB ${FC_OPENBLAS_STATIC_LIB}
 SAVE
 END
 ")
@@ -175,7 +189,7 @@ END
         OUTPUT ${MERGED_LIB_PATH}
         COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_SOURCE_DIR}/build/${MATRIX_BUILD_DIR}
         COMMAND ${CMAKE_AR} -M < ${MRI_SCRIPT}
-        DEPENDS finkit_matrix_static_base ${PLATFORM_LIB_PATH} ${MRI_SCRIPT}
+        DEPENDS finkit_matrix_static_base ${PLATFORM_LIB_PATH} ${FC_OPENBLAS_STATIC_LIB} ${MRI_SCRIPT}
         COMMENT "Merging static libraries into ${MERGED_LIB_PATH}"
         VERBATIM
     )

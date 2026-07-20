@@ -22,7 +22,10 @@ target_link_libraries(matrix_tests
     PRIVATE
         finkit_matrix_static_base
         finkit::platform
+        ${FC_OPENBLAS_STATIC_LIB}
         m
+        gfortran
+        pthread
 )
 
 target_compile_definitions(matrix_tests PRIVATE
