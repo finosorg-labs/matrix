@@ -208,7 +208,7 @@ static void bench_apply_qt_fn(void* user_data) {
     apply_qt_data_t* d = (apply_qt_data_t*)user_data;
     /* Restore vector (in-place operation) */
     memcpy(d->b, d->b_orig, d->m * sizeof(double));
-    fc_mat_apply_qt_vector_f64(d->m, d->n, d->A, d->n, d->tau, d->b);
+    fc_mat_apply_qt_vector_f64(d->m, d->n, d->A, d->m, d->tau, d->b);  /* lda = m */
 }
 
 /* bench_solve_triangular_fn benchmark function */
@@ -242,7 +242,7 @@ static void run_apply_qt_benchmarks(void) {
 
         /* Create QR decomposition first */
         fill_random(data.A, m * n);
-        fc_mat_qr_decompose_f64(m, n, data.A, n, data.tau);
+        fc_mat_qr_decompose_f64(m, n, data.A, m, data.tau);  /* lda = m (column-major) */
 
         fill_random(data.b_orig, m);
         memcpy(data.b, data.b_orig, m * sizeof(double));
@@ -252,7 +252,8 @@ static void run_apply_qt_benchmarks(void) {
 
         fc_bench_config_t config = FC_BENCH_CONFIG_DEFAULT;
         config.name = name;
-        config.data_size = m * sizeof(double);
+        /* Data size includes matrix A (m×n), vector b (m), and tau (n) */
+        config.data_size = (m * n + m + n) * sizeof(double);
         config.min_time_ms = 200.0;
         config.warmup_ms = 50.0;
 
