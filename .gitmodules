@@ -1,9 +1,6 @@
 [submodule "modules/platform"]
 	path = modules/platform
 	url = https://github.com/finosorg-labs/platform.git
-[submodule "modules/math"]
-	path = modules/math
-	url = https://github.com/finosorg-labs/math.git
 [submodule "third_party/OpenBLAS"]
 	path = third_party/OpenBLAS
 	url = https://github.com/OpenMathLib/OpenBLAS.git

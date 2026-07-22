@@ -4,6 +4,10 @@ project(finkit-matrix VERSION 1.0.0 LANGUAGES C)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
+# Build options (must be before add_subdirectory calls)
+option(FC_BUILD_TESTS "Build tests" ON)
+option(FC_BUILD_BENCHMARKS "Build benchmarks" ON)
+
 # Include SIMD detection and compiler flags
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/DetectSIMD.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/CompilerFlags.cmake)
@@ -170,14 +174,12 @@ install(FILES
 )
 
 # Tests
-option(FC_BUILD_TESTS "Build tests" ON)
 if(FC_BUILD_TESTS AND EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/tests)
     enable_testing()
     add_subdirectory(tests)
 endif()
 
 # Benchmarks
-option(FC_BUILD_BENCHMARKS "Build benchmarks" ON)
 if(FC_BUILD_BENCHMARKS AND EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/benchmarks)
     add_subdirectory(benchmarks)
 endif()
