@@ -44,34 +44,6 @@ configure_file(
     @ONLY
 )
 
-# Use prebuilt platform library
-if(NOT TARGET finkit::platform)
-    # Detect platform
-    if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-        if(CMAKE_SYSTEM_PROCESSOR MATCHES "arm64|aarch64")
-            set(PLATFORM_BUILD_DIR "${CMAKE_CURRENT_SOURCE_DIR}/modules/platform/build/darwin_arm64")
-        else()
-            set(PLATFORM_BUILD_DIR "${CMAKE_CURRENT_SOURCE_DIR}/modules/platform/build/darwin_x86_64")
-        endif()
-    elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-        set(PLATFORM_BUILD_DIR "${CMAKE_CURRENT_SOURCE_DIR}/modules/platform/build/linux_amd64")
-    elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-        set(PLATFORM_BUILD_DIR "${CMAKE_CURRENT_SOURCE_DIR}/modules/platform/build/windows_amd64")
-    else()
-        message(FATAL_ERROR "Unsupported platform: ${CMAKE_SYSTEM_NAME}")
-    endif()
-
-    # Import prebuilt platform library
-    add_library(finkit_platform_static STATIC IMPORTED)
-    set_target_properties(finkit_platform_static PROPERTIES
-        IMPORTED_LOCATION "${PLATFORM_BUILD_DIR}/libfinkit_platform_static.a"
-    )
-    target_include_directories(finkit_platform_static INTERFACE
-        "${CMAKE_CURRENT_SOURCE_DIR}/modules/platform/include"
-    )
-    add_library(finkit::platform ALIAS finkit_platform_static)
-endif()
-
 # Try to find OpenBLAS library in build directory first, then fall back to source directory
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/build/${MATRIX_BUILD_DIR}/third_party/libopenblas.a)
     set(FC_OPENBLAS_STATIC_LIB ${CMAKE_CURRENT_SOURCE_DIR}/build/${MATRIX_BUILD_DIR}/third_party/libopenblas.a)
@@ -82,123 +54,56 @@ else()
 endif()
 
 
-# Matrix module sources
-set(MATRIX_SOURCES
-    matrix-c/decompose.c
-    matrix-c/gemm.c
-    matrix-c/gemv.c
-    matrix-c/solve.c
-    matrix-c/transpose.c
-    matrix-c/tridiag.c
-    matrix-c/vector_ops.c
-)
-
-# Create object library
-add_library(finkit_matrix OBJECT ${MATRIX_SOURCES})
-
-target_include_directories(finkit_matrix
-    PUBLIC
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/modules/platform/include>
-        $<INSTALL_INTERFACE:include>
-    PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/third_party/OpenBLAS
-)
-
-target_compile_definitions(finkit_matrix PRIVATE FC_STATIC_BUILD FC_ENABLE_INTERNAL_TESTS)
-
-# For files with multiple SIMD paths, use the highest available
-if(FC_SIMD_LEVEL STREQUAL "AVX512")
-    set_source_files_properties(matrix-c/gemm.c PROPERTIES COMPILE_FLAGS "${FC_AVX512_FLAGS}")
-    set_source_files_properties(matrix-c/gemv.c PROPERTIES COMPILE_FLAGS "${FC_AVX512_FLAGS}")
-    set_source_files_properties(matrix-c/transpose.c PROPERTIES COMPILE_FLAGS "${FC_AVX512_FLAGS}")
-    set_source_files_properties(matrix-c/vector_ops.c PROPERTIES COMPILE_FLAGS "${FC_AVX512_FLAGS}")
-    set_source_files_properties(matrix-c/decompose.c PROPERTIES COMPILE_FLAGS "${FC_AVX512_FLAGS}")
-    set_source_files_properties(matrix-c/solve.c PROPERTIES COMPILE_FLAGS "${FC_AVX512_FLAGS}")
-    set_source_files_properties(matrix-c/tridiag.c PROPERTIES COMPILE_FLAGS "${FC_AVX512_FLAGS}")
-elseif(FC_SIMD_LEVEL STREQUAL "AVX2")
-    set_source_files_properties(matrix-c/gemm.c PROPERTIES COMPILE_FLAGS "${FC_AVX2_FLAGS}")
-    set_source_files_properties(matrix-c/gemv.c PROPERTIES COMPILE_FLAGS "${FC_AVX2_FLAGS}")
-    set_source_files_properties(matrix-c/transpose.c PROPERTIES COMPILE_FLAGS "${FC_AVX2_FLAGS}")
-    set_source_files_properties(matrix-c/vector_ops.c PROPERTIES COMPILE_FLAGS "${FC_AVX2_FLAGS}")
-    set_source_files_properties(matrix-c/decompose.c PROPERTIES COMPILE_FLAGS "${FC_AVX2_FLAGS}")
-    set_source_files_properties(matrix-c/solve.c PROPERTIES COMPILE_FLAGS "${FC_AVX2_FLAGS}")
-    set_source_files_properties(matrix-c/tridiag.c PROPERTIES COMPILE_FLAGS "${FC_AVX2_FLAGS}")
-elseif(FC_SIMD_LEVEL STREQUAL "SSE42")
-    set_source_files_properties(matrix-c/gemm.c PROPERTIES COMPILE_FLAGS "${FC_SSE42_FLAGS}")
-    set_source_files_properties(matrix-c/gemv.c PROPERTIES COMPILE_FLAGS "${FC_SSE42_FLAGS}")
-    set_source_files_properties(matrix-c/transpose.c PROPERTIES COMPILE_FLAGS "${FC_SSE42_FLAGS}")
-    set_source_files_properties(matrix-c/vector_ops.c PROPERTIES COMPILE_FLAGS "${FC_SSE42_FLAGS}")
-    set_source_files_properties(matrix-c/decompose.c PROPERTIES COMPILE_FLAGS "${FC_SSE42_FLAGS}")
-    set_source_files_properties(matrix-c/solve.c PROPERTIES COMPILE_FLAGS "${FC_SSE42_FLAGS}")
-    set_source_files_properties(matrix-c/tridiag.c PROPERTIES COMPILE_FLAGS "${FC_SSE42_FLAGS}")
-endif()
+# Build matrix-c subdirectory (creates matrix_obj target)
+add_subdirectory(matrix-c)
 
 # Create base static library (without platform)
-add_library(finkit_matrix_static_base STATIC $<TARGET_OBJECTS:finkit_matrix>)
+add_library(finkit_matrix_static_base STATIC $<TARGET_OBJECTS:matrix_obj>)
 target_include_directories(finkit_matrix_static_base
     PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>
 )
 
-# Merge static libraries into a single library
-set(MERGED_LIB_PATH ${CMAKE_CURRENT_SOURCE_DIR}/build/${MATRIX_BUILD_DIR}/libfinkit_matrix_static.a)
-set(PLATFORM_LIB_PATH "${PLATFORM_BUILD_DIR}/libfinkit_platform_static.a")
+# Merge static libraries with deduplication
+# Use build-specific path to avoid conflicts between different build types (sanitizers)
+set(MERGED_LIB_PATH ${CMAKE_CURRENT_BINARY_DIR}/libfinkit_matrix_static.a)
+# Fixed path for Go cgo bindings
+set(FINAL_LIB_PATH ${CMAKE_CURRENT_SOURCE_DIR}/build/${MATRIX_BUILD_DIR}/libfinkit_matrix_static.a)
 
+# Determine merge tool based on platform
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-    # Windows: use lib.exe to merge libraries
-    add_custom_command(
-        OUTPUT ${MERGED_LIB_PATH}
-     COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_SOURCE_DIR}/build/${MATRIX_BUILD_DIR}
-     COMMAND lib.exe /OUT:${MERGED_LIB_PATH}
-            $<TARGET_FILE:finkit_matrix_static_base>
-            ${PLATFORM_LIB_PATH}
-            ${FC_OPENBLAS_STATIC_LIB}
-        DEPENDS finkit_matrix_static_base ${PLATFORM_LIB_PATH} ${FC_OPENBLAS_STATIC_LIB}
-        COMMENT "Merging static libraries into ${MERGED_LIB_PATH}"
-        VERBATIM
-    )
+    set(MERGE_TOOL "lib.exe")
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-    # macOS: use libtool to merge libraries
-    add_custom_command(
-        OUTPUT ${MERGED_LIB_PATH}
-        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_SOURCE_DIR}/build/${MATRIX_BUILD_DIR}
-        COMMAND libtool -static -o ${MERGED_LIB_PATH}
-            $<TARGET_FILE:finkit_matrix_static_base>
-            ${PLATFORM_LIB_PATH}
-            ${FC_OPENBLAS_STATIC_LIB}
-            2>&1 | grep -v "warning duplicate member name" || true
-        DEPENDS finkit_matrix_static_base ${PLATFORM_LIB_PATH} ${FC_OPENBLAS_STATIC_LIB}
-      COMMENT "Merging static libraries into ${MERGED_LIB_PATH}"
-        VERBATIM
-    )
+    set(MERGE_TOOL "libtool")
 else()
-    # Linux: use ar with MRI script to merge libraries
-    set(MRI_SCRIPT ${CMAKE_CURRENT_BINARY_DIR}/merge_libs.mri)
-    file(GENERATE OUTPUT ${MRI_SCRIPT} CONTENT
-"CREATE ${MERGED_LIB_PATH}
-ADDLIB $<TARGET_FILE:finkit_matrix_static_base>
-ADDLIB ${PLATFORM_LIB_PATH}
-ADDLIB ${FC_OPENBLAS_STATIC_LIB}
-SAVE
-END
-")
-
-    add_custom_command(
-        OUTPUT ${MERGED_LIB_PATH}
-        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_SOURCE_DIR}/build/${MATRIX_BUILD_DIR}
-        COMMAND ${CMAKE_AR} -M < ${MRI_SCRIPT}
-        DEPENDS finkit_matrix_static_base ${PLATFORM_LIB_PATH} ${FC_OPENBLAS_STATIC_LIB} ${MRI_SCRIPT}
-        COMMENT "Merging static libraries into ${MERGED_LIB_PATH}"
-        VERBATIM
-    )
+    set(MERGE_TOOL "${CMAKE_AR}")
 endif()
+
+# Unified merge command for all platforms
+set(MERGE_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/scripts/merge_libs.sh)
+
+add_custom_command(
+    OUTPUT ${MERGED_LIB_PATH}
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_SOURCE_DIR}/build/${MATRIX_BUILD_DIR}
+    COMMAND bash ${MERGE_SCRIPT}
+        ${MERGED_LIB_PATH}
+        $<TARGET_FILE:finkit_matrix_static_base>
+        ${MERGE_TOOL}
+        --mode=auto
+        --project-root=${CMAKE_CURRENT_SOURCE_DIR}
+        --build-subdir=${MATRIX_BUILD_DIR}
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${MERGED_LIB_PATH} ${FINAL_LIB_PATH}
+    DEPENDS finkit_matrix_static_base ${MERGE_SCRIPT}
+    COMMENT "Merging static libraries with auto deduplication"
+    VERBATIM
+)
 
 # Create custom target to trigger the merge
 add_custom_target(finkit_matrix_static ALL
     DEPENDS ${MERGED_LIB_PATH}
     COMMAND ${CMAKE_COMMAND} -E echo "Merged library created at: ${MERGED_LIB_PATH}"
+    COMMAND ${CMAKE_COMMAND} -E echo "Final library for Go: ${FINAL_LIB_PATH}"
 )
 
 # Create interface library for linking
@@ -210,8 +115,14 @@ target_include_directories(finkit_matrix_static_interface
 )
 target_link_libraries(finkit_matrix_static_interface
     INTERFACE
-        m
         ${MERGED_LIB_PATH}
+        gfortran
+        m
+)
+# Allow multiple definitions to handle duplicate symbols from bundled dependencies
+target_link_options(finkit_matrix_static_interface
+    INTERFACE
+        "LINKER:--allow-multiple-definition"
 )
 
 # Create alias

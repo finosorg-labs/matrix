@@ -17,14 +17,10 @@ add_executable(matrix_tests
     test_vector_ops.c
 )
 
-# Link with matrix library
+# Link with merged matrix library (includes all dependencies)
 target_link_libraries(matrix_tests
     PRIVATE
-        finkit_matrix_static_base
-        finkit::platform
-        ${FC_OPENBLAS_STATIC_LIB}
-        m
-        gfortran
+        finkit_matrix_static_interface
         pthread
 )
 

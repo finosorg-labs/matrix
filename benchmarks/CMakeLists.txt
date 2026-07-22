@@ -14,12 +14,6 @@ target_include_directories(bench_framework
         ${CMAKE_SOURCE_DIR}/modules/platform/include
 )
 
-target_link_libraries(bench_framework
-  PUBLIC
-        finkit_matrix_static_base
-        finkit::platform
-)
-
 # Benchmark executable
 add_executable(matrix_benchmarks
     bench_main.c
@@ -34,15 +28,11 @@ add_executable(matrix_benchmarks
     bench_vector_ops.c
 )
 
-# Link with benchmark framework and matrix library
+# Link with benchmark framework and merged matrix library
 target_link_libraries(matrix_benchmarks
     PRIVATE
         bench_framework
-        finkit_matrix_static_base
-        finkit::platform
-        ${FC_OPENBLAS_STATIC_LIB}
-        m
-        gfortran
+        finkit_matrix_static_interface
         pthread
 )
 
