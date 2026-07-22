@@ -38,13 +38,20 @@ check_c_source_compiles("
         __m512i a = _mm512_setzero_si512();
         return _mm512_extract_epi32(a, 0);
     }
-" FC_HAS_AVX512)
+" FC_HAS_AVX512_RUNTIME)
 
 # Restore original flags
 set(CMAKE_REQUIRED_FLAGS "${_orig_cmake_required_flags}")
 
-# Determine the highest SIMD level
-if(FC_HAS_AVX512)
+# For compilation: Always enable all SIMD levels that the compiler supports
+# This allows generating code for all SIMD variants regardless of build machine CPU
+# Runtime dispatch will select the appropriate variant based on actual CPU
+set(FC_HAS_SSE42 1)
+set(FC_HAS_AVX2 1)
+set(FC_HAS_AVX512 1)
+
+# Determine the highest SIMD level for runtime (based on build machine)
+if(FC_HAS_AVX512_RUNTIME)
     set(FC_SIMD_LEVEL "AVX512")
 elseif(FC_HAS_AVX2)
     set(FC_SIMD_LEVEL "AVX2")
